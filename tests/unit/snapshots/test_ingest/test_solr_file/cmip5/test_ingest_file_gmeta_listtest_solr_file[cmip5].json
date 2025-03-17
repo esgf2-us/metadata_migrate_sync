@@ -1,0 +1,108 @@
+{
+    "ingest_type": "GMetaList",
+    "ingest_data": {
+        "gmeta": [
+            {
+                "id": "file",
+                "subject": "cmip5.output.CCCma.CanAM4.amip.3hr.atmos.r3i1p1.v20130331.sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|crd-esgf-drc.ec.gc.ca",
+                "visible_to": [
+                    "public"
+                ],
+                "content": {
+                    "id": "cmip5.output.CCCma.CanAM4.amip.3hr.atmos.r3i1p1.v20130331.sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|crd-esgf-drc.ec.gc.ca",
+                    "version": "1",
+                    "cf_standard_name": [
+                        "wind_speed"
+                    ],
+                    "checksum": [
+                        "56b1aabbdf9406552e091d965d048703788ef69731406f2387384b1bd456c08b"
+                    ],
+                    "checksum_type": [
+                        "SHA256"
+                    ],
+                    "cmor_table": [
+                        "cf3hr"
+                    ],
+                    "data_node": "crd-esgf-drc.ec.gc.ca",
+                    "dataset_id": "cmip5.output.CCCma.CanAM4.amip.3hr.atmos.r3i1p1.v20130331|crd-esgf-drc.ec.gc.ca",
+                    "dataset_id_template_": [
+                        "cmip5.%(product)s.%(institute)s.%(model)s.%(experiment)s.%(time_frequency)s.%(realm)s.%(ensemble)s"
+                    ],
+                    "description": [
+                        "CanAM4 model output prepared for CMIP5 AMIP"
+                    ],
+                    "directory_format_template_": [
+                        "%(root)s/%(project)s/%(product)s/%(institute)s/%(model)s/%(experiment)s/%(time_frequency)s/%(realm)s/%(variable)s/%(ensemble)s"
+                    ],
+                    "drs_id": [
+                        "cmip5.output.CCCma.CanAM4.amip.3hr.atmos.cf3hr.r3i1p1"
+                    ],
+                    "ensemble": [
+                        "r3i1p1"
+                    ],
+                    "experiment": [
+                        "amip"
+                    ],
+                    "experiment_family": [
+                        "All",
+                        "Atmos-only"
+                    ],
+                    "forcing": [
+                        "GHG,Oz,SA,BC,OC,LU,Sl,Vl (GHG includes CO2,CH4,N2O,CFC11,effective CFC12)"
+                    ],
+                    "format": [
+                        "netCDF, CF-1.4"
+                    ],
+                    "index_node": "esgf-node.llnl.gov",
+                    "instance_id": "cmip5.output.CCCma.CanAM4.amip.3hr.atmos.r3i1p1.v20130331.sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc",
+                    "institute": [
+                        "CCCMA"
+                    ],
+                    "latest": true,
+                    "master_id": "cmip5.output.CCCma.CanAM4.amip.3hr.atmos.r3i1p1.sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc",
+                    "model": [
+                        "CanAM4"
+                    ],
+                    "product": [
+                        "output"
+                    ],
+                    "project": [
+                        "CMIP5"
+                    ],
+                    "realm": [
+                        "atmos"
+                    ],
+                    "replica": false,
+                    "size": 2968346216,
+                    "time_frequency": [
+                        "3hr"
+                    ],
+                    "timestamp": "2012-01-11T13:09:04Z",
+                    "title": "sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc",
+                    "tracking_id": [
+                        "40f2d310-628a-4240-8f1e-3503eea77683"
+                    ],
+                    "type": "File",
+                    "url": [
+                        "http://crd-esgf-drc.ec.gc.ca/thredds/fileServer/esg_dataroot/AR5/CMIP5/output/CCCma/CanAM4/amip/3hr/atmos/sfcWind/r3i1p1/sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|application/netcdf|HTTPServer",
+                        "gsiftp://crd-esgf-drc.ec.gc.ca:2811//esg_dataroot/AR5/CMIP5/output/CCCma/CanAM4/amip/3hr/atmos/sfcWind/r3i1p1/sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|application/gridftp|GridFTP",
+                        "http://crd-esgf-drc.ec.gc.ca/thredds/dodsC/esg_dataroot/AR5/CMIP5/output/CCCma/CanAM4/amip/3hr/atmos/sfcWind/r3i1p1/sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc.html|application/opendap-html|OPENDAP"
+                    ],
+                    "variable": [
+                        "sfcWind"
+                    ],
+                    "variable_long_name": [
+                        "Near-Surface Wind Speed"
+                    ],
+                    "variable_units": [
+                        "m s-1"
+                    ],
+                    "_version_": 1627902274621669376,
+                    "retracted": false,
+                    "_timestamp": "2019-03-13T14:49:48.926Z",
+                    "score": 1.0
+                }
+            }
+        ]
+    }
+}

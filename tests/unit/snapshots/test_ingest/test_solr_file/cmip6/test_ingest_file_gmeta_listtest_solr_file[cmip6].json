@@ -1,0 +1,152 @@
+{
+    "ingest_type": "GMetaList",
+    "ingest_data": {
+        "gmeta": [
+            {
+                "id": "file",
+                "subject": "CMIP6.AerChemMIP.AS-RCEC.TaiESM1.hist-piNTCF.r1i1p1f1.AERmon.bldep.gn.v20210603.bldep_AERmon_TaiESM1_hist-piNTCF_r1i1p1f1_gn_185001-201412.nc|eagle.alcf.anl.gov",
+                "visible_to": [
+                    "public"
+                ],
+                "content": {
+                    "mip_era": [
+                        "CMIP6"
+                    ],
+                    "activity_drs": [
+                        "AerChemMIP"
+                    ],
+                    "institution_id": [
+                        "AS-RCEC"
+                    ],
+                    "source_id": [
+                        "TaiESM1"
+                    ],
+                    "experiment_id": [
+                        "hist-piNTCF"
+                    ],
+                    "member_id": [
+                        "r1i1p1f1"
+                    ],
+                    "table_id": [
+                        "AERmon"
+                    ],
+                    "variable_id": [
+                        "bldep"
+                    ],
+                    "grid_label": [
+                        "gn"
+                    ],
+                    "frequency": [
+                        "mon"
+                    ],
+                    "realm": [
+                        "aerosol"
+                    ],
+                    "product": [
+                        "model-output"
+                    ],
+                    "nominal_resolution": [
+                        "100 km"
+                    ],
+                    "source_type": [
+                        "AOGCM",
+                        "AER",
+                        "CHEM"
+                    ],
+                    "grid": [
+                        "finite-volume grid with 0.9x1.25 degree lat/lon resolution"
+                    ],
+                    "creation_date": "2021-06-02T09:54:55Z",
+                    "variant_label": [
+                        "r1i1p1f1"
+                    ],
+                    "sub_experiment_id": [
+                        "none"
+                    ],
+                    "further_info_url": [
+                        "https://furtherinfo.es-doc.org/CMIP6.AS-RCEC.TaiESM1.hist-piNTCF.none.r1i1p1f1"
+                    ],
+                    "activity_id": [
+                        "AerChemMIP"
+                    ],
+                    "data_specs_version": [
+                        "01.00.31"
+                    ],
+                    "title": "bldep_AERmon_TaiESM1_hist-piNTCF_r1i1p1f1_gn_185001-201412.nc",
+                    "experiment_title": [
+                        "historical forcing, but with pre-industrial NTCF emissions"
+                    ],
+                    "data_node": "eagle.alcf.anl.gov",
+                    "index_node": "esgf-node.cels.anl.gov",
+                    "master_id": "CMIP6.AerChemMIP.AS-RCEC.TaiESM1.hist-piNTCF.r1i1p1f1.AERmon.bldep.gn.bldep_AERmon_TaiESM1_hist-piNTCF_r1i1p1f1_gn_185001-201412.nc",
+                    "instance_id": "CMIP6.AerChemMIP.AS-RCEC.TaiESM1.hist-piNTCF.r1i1p1f1.AERmon.bldep.gn.v20210603.bldep_AERmon_TaiESM1_hist-piNTCF_r1i1p1f1_gn_185001-201412.nc",
+                    "id": "CMIP6.AerChemMIP.AS-RCEC.TaiESM1.hist-piNTCF.r1i1p1f1.AERmon.bldep.gn.v20210603.bldep_AERmon_TaiESM1_hist-piNTCF_r1i1p1f1_gn_185001-201412.nc|eagle.alcf.anl.gov",
+                    "short_description": [
+                        "TaiESM1 output prepared for CMIP6"
+                    ],
+                    "replica": true,
+                    "latest": true,
+                    "type": "File",
+                    "version": "20210603",
+                    "dataset_id_template_": [
+                        "%(mip_era)s.%(activity_drs)s.%(institution_id)s.%(source_id)s.%(experiment_id)s.%(member_id)s.%(table_id)s.%(variable_id)s.%(grid_label)s"
+                    ],
+                    "directory_format_template_": [
+                        "%(root)s/%(mip_era)s/%(activity_drs)s/%(institution_id)s/%(source_id)s/%(experiment_id)s/%(member_id)s/%(table_id)s/%(variable_id)s/%(grid_label)s/%(version)s"
+                    ],
+                    "model_cohort": [
+                        "Registered"
+                    ],
+                    "project": [
+                        "CMIP6"
+                    ],
+                    "variable_long_name": [
+                        "Boundary Layer Depth"
+                    ],
+                    "cf_standard_name": [
+                        "atmosphere_boundary_layer_thickness"
+                    ],
+                    "variable_units": [
+                        "m"
+                    ],
+                    "variable": [
+                        "bldep"
+                    ],
+                    "north_degrees": 90.0,
+                    "south_degrees": -90.0,
+                    "east_degrees": 358.75,
+                    "west_degrees": 0.0,
+                    "dataset_id": "CMIP6.AerChemMIP.AS-RCEC.TaiESM1.hist-piNTCF.r1i1p1f1.AERmon.bldep.gn.v20210603|eagle.alcf.anl.gov",
+                    "tracking_id": [
+                        "hdl:21.14100/e3357adb-ac3f-472c-83f3-01ebfc446a73"
+                    ],
+                    "size": 330810526,
+                    "timestamp": "2021-06-02T09:57:31Z",
+                    "checksum": [
+                        "8f6f7f0bf0c8efc8f7ecc489323cd83bf3611fb1650f09324ecee90fcf25dc54"
+                    ],
+                    "checksum_type": [
+                        "SHA256"
+                    ],
+                    "url": [
+                        "https://g-52ba3.fd635.8443.data.globus.org/css03_data/CMIP6/AerChemMIP/AS-RCEC/TaiESM1/hist-piNTCF/r1i1p1f1/AERmon/bldep/gn/v20210603/bldep_AERmon_TaiESM1_hist-piNTCF_r1i1p1f1_gn_185001-201412.nc|application/netcdf|HTTPServer",
+                        "globus:8896f38e-68d1-4708-bce4-b1b3a3405809/css03_data/CMIP6/AerChemMIP/AS-RCEC/TaiESM1/hist-piNTCF/r1i1p1f1/AERmon/bldep/gn/v20210603/bldep_AERmon_TaiESM1_hist-piNTCF_r1i1p1f1_gn_185001-201412.nc|Globus|Globus"
+                    ],
+                    "publish_path": [
+                        "css03_data/CMIP6/AerChemMIP/AS-RCEC/TaiESM1/hist-piNTCF/r1i1p1f1/AERmon/bldep/gn/v20210603/bldep_AERmon_TaiESM1_hist-piNTCF_r1i1p1f1_gn_185001-201412.nc"
+                    ],
+                    "citation_url": [
+                        "http://cera-www.dkrz.de/WDCC/meta/CMIP6/CMIP6.AerChemMIP.AS-RCEC.TaiESM1.hist-piNTCF.r1i1p1f1.AERmon.bldep.gn.bldep_AERmon_TaiESM1_hist-piNTCF_r1i1p1f1_gn_185001-201412.nc.v20210603.json"
+                    ],
+                    "pid": [
+                        "hdl:21.14100/83dc327a-7077-36b2-8239-e733acb5fdda"
+                    ],
+                    "_version_": 1777030645821734912,
+                    "retracted": false,
+                    "_timestamp": "2023-09-14T16:21:26.386Z",
+                    "score": 1.0
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,104 @@
+{
+    "ingest_type": "GMetaList",
+    "ingest_data": {
+        "gmeta": [
+            {
+                "id": "dataset",
+                "subject": "cmip3.MPI-M.mpi_echam5.sresa1b.mon.atmos.run1.wap.v1|aims3.llnl.gov",
+                "visible_to": [
+                    "public"
+                ],
+                "content": {
+                    "id": "cmip3.MPI-M.mpi_echam5.sresa1b.mon.atmos.run1.wap.v1|aims3.llnl.gov",
+                    "version": "1",
+                    "access": [
+                        "HTTPServer",
+                        "GridFTP",
+                        "OPENDAP",
+                        "Globus"
+                    ],
+                    "cf_standard_name": [
+                        "lagrangian_tendency_of_air_pressure"
+                    ],
+                    "data_node": "aims3.llnl.gov",
+                    "dataset_id_template_": [
+                        "%(project)s.%(institute)s.%(model)s.%(experiment)s.%(time_frequency)s.%(realm)s.%(ensemble)s.%(variable)s"
+                    ],
+                    "datetime_start": "2001-01-16T12:00:00Z",
+                    "datetime_stop": "2200-12-16T12:00:00Z",
+                    "description": [
+                        "MPI  model output prepared for IPCC Fourth Assessment 720 ppm stabilization experiment (SRES A1B)"
+                    ],
+                    "east_degrees": 358.125,
+                    "ensemble": [
+                        "run1"
+                    ],
+                    "experiment": [
+                        "sresa1b"
+                    ],
+                    "experiment_family": [
+                        "All"
+                    ],
+                    "format": [
+                        "netCDF, CF-1.0"
+                    ],
+                    "geo": [
+                        "ENVELOPE(-180.0, -1.875, 88.572, -88.572)",
+                        "ENVELOPE(0.0, 180.0, 88.572, -88.572)"
+                    ],
+                    "geo_units": [
+                        "degrees_east"
+                    ],
+                    "height_bottom": 100000.0,
+                    "height_top": 1000.0,
+                    "height_units": "Pa",
+                    "index_node": "esgf-node.llnl.gov",
+                    "instance_id": "cmip3.MPI-M.mpi_echam5.sresa1b.mon.atmos.run1.wap.v1",
+                    "institute": [
+                        "MPI-M"
+                    ],
+                    "latest": true,
+                    "master_id": "cmip3.MPI-M.mpi_echam5.sresa1b.mon.atmos.run1.wap",
+                    "model": [
+                        "mpi_echam5"
+                    ],
+                    "north_degrees": 88.572,
+                    "number_of_aggregations": 1,
+                    "number_of_files": 4,
+                    "project": [
+                        "CMIP3"
+                    ],
+                    "realm": [
+                        "atmos"
+                    ],
+                    "replica": false,
+                    "size": 2831251168,
+                    "south_degrees": -88.572,
+                    "time_frequency": [
+                        "mon"
+                    ],
+                    "timestamp": "2016-06-24T03:10:12Z",
+                    "title": "project=CMIP3, model=Max Planck Institute for Meteorology, Germany, ECHAM5 / MPI OM, experiment=720 ppm stabilization, ensemble=run1, time_frequency=mon, version=1",
+                    "type": "Dataset",
+                    "url": [
+                        "http://aims3.llnl.gov/thredds/catalog/esgcet/99/cmip3.MPI-M.mpi_echam5.sresa1b.mon.atmos.run1.wap.v1.xml#cmip3.MPI-M.mpi_echam5.sresa1b.mon.atmos.run1.wap.v1|application/xml+thredds|THREDDS"
+                    ],
+                    "variable": [
+                        "wap"
+                    ],
+                    "variable_long_name": [
+                        "Omega (=dp/dt)"
+                    ],
+                    "variable_units": [
+                        "Pa s-1"
+                    ],
+                    "west_degrees": 0.0,
+                    "_version_": 1636805503719833600,
+                    "retracted": false,
+                    "_timestamp": "2019-06-19T21:22:49.850Z",
+                    "score": 1.0
+                }
+            }
+        ]
+    }
+}

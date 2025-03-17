@@ -1,0 +1,114 @@
+{
+    "ingest_type": "GMetaList",
+    "ingest_data": {
+        "gmeta": [
+            {
+                "id": "dataset",
+                "subject": "cmip5.output1.BCC.bcc-csm1-1.historical.fx.land.fx.r0i0p0.v20130307|aims3.llnl.gov",
+                "visible_to": [
+                    "public"
+                ],
+                "content": {
+                    "id": "cmip5.output1.BCC.bcc-csm1-1.historical.fx.land.fx.r0i0p0.v20130307|aims3.llnl.gov",
+                    "version": "20130307",
+                    "access": [
+                        "HTTPServer",
+                        "GridFTP",
+                        "OPENDAP",
+                        "Globus",
+                        "LAS"
+                    ],
+                    "cf_standard_name": [
+                        "soil_moisture_content_at_field_capacity",
+                        "root_depth",
+                        "land_ice_area_fraction"
+                    ],
+                    "cmor_table": [
+                        "fx"
+                    ],
+                    "data_node": "aims3.llnl.gov",
+                    "dataset_id_template_": [
+                        "cmip5.output1.%(valid_institute)s.%(model)s.%(experiment)s.%(time_frequency)s.%(realm)s.%(cmor_table)s.%(ensemble)s"
+                    ],
+                    "description": [
+                        "bcc-csm1-1 model output prepared for CMIP5 historical"
+                    ],
+                    "drs_id": [
+                        "cmip5.output1.BCC.bcc-csm1-1.historical.fx.land.fx.r0i0p0"
+                    ],
+                    "ensemble": [
+                        "r0i0p0"
+                    ],
+                    "experiment": [
+                        "historical"
+                    ],
+                    "experiment_family": [
+                        "All",
+                        "Historical"
+                    ],
+                    "forcing": [
+                        "Nat Ant GHG SD Oz Sl Vl SS Ds BC OC"
+                    ],
+                    "format": [
+                        "netCDF, CF-1.4"
+                    ],
+                    "index_node": "esgf-node.llnl.gov",
+                    "instance_id": "cmip5.output1.BCC.bcc-csm1-1.historical.fx.land.fx.r0i0p0.v20130307",
+                    "institute": [
+                        "BCC"
+                    ],
+                    "latest": true,
+                    "master_gateway": [
+                        "DEFAULT"
+                    ],
+                    "master_id": "cmip5.output1.BCC.bcc-csm1-1.historical.fx.land.fx.r0i0p0",
+                    "model": [
+                        "BCC-CSM1.1"
+                    ],
+                    "number_of_aggregations": 0,
+                    "number_of_files": 3,
+                    "product": [
+                        "output1"
+                    ],
+                    "project": [
+                        "CMIP5"
+                    ],
+                    "realm": [
+                        "land"
+                    ],
+                    "replica": true,
+                    "size": 134048,
+                    "time_frequency": [
+                        "fx"
+                    ],
+                    "timestamp": "2017-01-18T15:51:36Z",
+                    "title": "project=CMIP5, model=BCC-CSM1.1, Beijing Climate Center, China Meteorological Administration, experiment=historical, time_frequency=fx, modeling realm=land, ensemble=r0i0p0, version=20130307",
+                    "type": "Dataset",
+                    "url": [
+                        "http://aims3.llnl.gov/thredds/catalog/esgcet/170/cmip5.output1.BCC.bcc-csm1-1.historical.fx.land.fx.r0i0p0.v20130307.xml#cmip5.output1.BCC.bcc-csm1-1.historical.fx.land.fx.r0i0p0.v20130307|application/xml+thredds|THREDDS",
+                        "http://aims3.llnl.gov/las/getUI.do?catid=A5A45D5859AB46D7D9A39A3F376758CE_ns_cmip5.output1.BCC.bcc-csm1-1.historical.fx.land.fx.r0i0p0.v20130307|application/las|LAS"
+                    ],
+                    "variable": [
+                        "mrsofc",
+                        "rootd",
+                        "sftgif"
+                    ],
+                    "variable_long_name": [
+                        "Capacity of Soil to Store Water",
+                        "Maximum Root Depth",
+                        "Fraction of Grid Cell Covered with Glacier"
+                    ],
+                    "variable_units": [
+                        "kg m-2",
+                        "m",
+                        "%"
+                    ],
+                    "_version_": 1636914509344931840,
+                    "retracted": false,
+                    "_timestamp": "2019-06-21T02:15:25.715Z",
+                    "score": 1.0
+                }
+            }
+        ]
+    }
+}

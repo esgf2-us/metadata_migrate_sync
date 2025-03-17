@@ -1,0 +1,90 @@
+{
+    "ingest_type": "GMetaList",
+    "ingest_data": {
+        "gmeta": [
+            {
+                "id": "file",
+                "subject": "cmip3.BCCR.bccr_bcm2_0.1pctto2x.mon.ocean.run1.so.v1.so_O1e_2020-2029.nc|aims3.llnl.gov",
+                "visible_to": [
+                    "public"
+                ],
+                "content": {
+                    "id": "cmip3.BCCR.bccr_bcm2_0.1pctto2x.mon.ocean.run1.so.v1.so_O1e_2020-2029.nc|aims3.llnl.gov",
+                    "version": "1",
+                    "cf_standard_name": [
+                        "sea_water_salinity"
+                    ],
+                    "checksum": [
+                        "a40994b61a45204bcd394ab7c2f25f2548caf7016eaf9a9baa83bb41554791cd"
+                    ],
+                    "checksum_type": [
+                        "SHA256"
+                    ],
+                    "data_node": "aims3.llnl.gov",
+                    "dataset_id": "cmip3.BCCR.bccr_bcm2_0.1pctto2x.mon.ocean.run1.so.v1|aims3.llnl.gov",
+                    "dataset_id_template_": [
+                        "%(project)s.%(institute)s.%(model)s.%(experiment)s.%(time_frequency)s.%(realm)s.%(ensemble)s.%(variable)s"
+                    ],
+                    "description": [
+                        "BCCR model output prepared for IPCC Fourth\nAssessment Report 1%/year CO2 increase experiment\n(to doubling)"
+                    ],
+                    "ensemble": [
+                        "run1"
+                    ],
+                    "experiment": [
+                        "1pctto2x"
+                    ],
+                    "experiment_family": [
+                        "All"
+                    ],
+                    "format": [
+                        "netCDF, CF-1.0"
+                    ],
+                    "index_node": "esgf-node.llnl.gov",
+                    "instance_id": "cmip3.BCCR.bccr_bcm2_0.1pctto2x.mon.ocean.run1.so.v1.so_O1e_2020-2029.nc",
+                    "institute": [
+                        "BCCR"
+                    ],
+                    "latest": true,
+                    "master_id": "cmip3.BCCR.bccr_bcm2_0.1pctto2x.mon.ocean.run1.so.so_O1e_2020-2029.nc",
+                    "model": [
+                        "bccr_bcm2_0"
+                    ],
+                    "project": [
+                        "CMIP3"
+                    ],
+                    "realm": [
+                        "ocean"
+                    ],
+                    "replica": false,
+                    "size": 1026452656,
+                    "time_frequency": [
+                        "mon"
+                    ],
+                    "timestamp": "2011-08-27T16:05:50Z",
+                    "title": "so_O1e_2020-2029.nc",
+                    "type": "File",
+                    "url": [
+                        "http://aims3.llnl.gov/thredds/fileServer/cmip3_data/1pctto2x/ocn/mo/so/bccr_bcm2_0/run1/so_O1e_2020-2029.nc|application/netcdf|HTTPServer",
+                        "http://aims3.llnl.gov/thredds/dodsC/cmip3_data/1pctto2x/ocn/mo/so/bccr_bcm2_0/run1/so_O1e_2020-2029.nc.html|application/opendap-html|OPENDAP",
+                        "gsiftp://aimsdtn3.llnl.gov:2811//cmip3_data/1pctto2x/ocn/mo/so/bccr_bcm2_0/run1/so_O1e_2020-2029.nc|application/gridftp|GridFTP",
+                        "globus:415a6320-e49c-11e5-9798-22000b9da45e/cmip3_data/1pctto2x/ocn/mo/so/bccr_bcm2_0/run1/so_O1e_2020-2029.nc|Globus|Globus"
+                    ],
+                    "variable": [
+                        "so"
+                    ],
+                    "variable_long_name": [
+                        "Salinity"
+                    ],
+                    "variable_units": [
+                        "1e-3"
+                    ],
+                    "_version_": 1636800468990558208,
+                    "retracted": false,
+                    "_timestamp": "2019-06-19T20:02:48.358Z",
+                    "score": 1.0
+                }
+            }
+        ]
+    }
+}

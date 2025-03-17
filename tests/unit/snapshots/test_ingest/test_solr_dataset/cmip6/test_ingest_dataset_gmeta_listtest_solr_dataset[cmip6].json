@@ -1,0 +1,145 @@
+{
+    "ingest_type": "GMetaList",
+    "ingest_data": {
+        "gmeta": [
+            {
+                "id": "dataset",
+                "subject": "CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr.v20191003|esgf-data1.llnl.gov",
+                "visible_to": [
+                    "public"
+                ],
+                "content": {
+                    "id": "CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr.v20191003|esgf-data1.llnl.gov",
+                    "version": "20191003",
+                    "access": [
+                        "HTTPServer",
+                        "GridFTP",
+                        "OPENDAP",
+                        "Globus",
+                        "LAS"
+                    ],
+                    "activity_drs": [
+                        "CMIP"
+                    ],
+                    "activity_id": [
+                        "CMIP"
+                    ],
+                    "cf_standard_name": [
+                        "mole_fraction_of_nitrous_oxide_in_air"
+                    ],
+                    "citation_url": [
+                        "http://cera-www.dkrz.de/WDCC/meta/CMIP6/CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr.v20191003.json"
+                    ],
+                    "data_node": "esgf-data1.llnl.gov",
+                    "data_specs_version": [
+                        "01.00.21"
+                    ],
+                    "dataset_id_template_": [
+                        "%(mip_era)s.%(activity_drs)s.%(institution_id)s.%(source_id)s.%(experiment_id)s.%(member_id)s.%(table_id)s.%(variable_id)s.%(grid_label)s"
+                    ],
+                    "datetime_start": "1850-12-16T12:00:00Z",
+                    "datetime_stop": "1855-11-16T00:00:00Z",
+                    "directory_format_template_": [
+                        "%(root)s/%(mip_era)s/%(activity_drs)s/%(institution_id)s/%(source_id)s/%(experiment_id)s/%(member_id)s/%(table_id)s/%(variable_id)s/%(grid_label)s/%(version)s"
+                    ],
+                    "experiment_id": [
+                        "abrupt-4xCO2"
+                    ],
+                    "experiment_title": [
+                        "abrupt quadrupling of CO2"
+                    ],
+                    "frequency": [
+                        "mon"
+                    ],
+                    "further_info_url": [
+                        "https://furtherinfo.es-doc.org/CMIP6.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.none.r12i1p1f1"
+                    ],
+                    "grid": [
+                        "LMDZ grid"
+                    ],
+                    "grid_label": [
+                        "gr"
+                    ],
+                    "index_node": "esgf-node.llnl.gov",
+                    "instance_id": "CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr.v20191003",
+                    "institution_id": [
+                        "IPSL"
+                    ],
+                    "latest": true,
+                    "master_id": "CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr",
+                    "member_id": [
+                        "r12i1p1f1"
+                    ],
+                    "mip_era": [
+                        "CMIP6"
+                    ],
+                    "model_cohort": [
+                        "Registered"
+                    ],
+                    "nominal_resolution": [
+                        "250 km"
+                    ],
+                    "number_of_aggregations": 2,
+                    "number_of_files": 1,
+                    "pid": [
+                        "hdl:21.14100/ab1fbdc6-6b9c-3d1f-ad8f-edc90071bf18"
+                    ],
+                    "product": [
+                        "model-output"
+                    ],
+                    "project": [
+                        "CMIP6"
+                    ],
+                    "realm": [
+                        "atmos",
+                        "atmosChem"
+                    ],
+                    "replica": true,
+                    "size": 31928,
+                    "source_id": [
+                        "IPSL-CM6A-LR"
+                    ],
+                    "source_type": [
+                        "AOGCM",
+                        "BGC"
+                    ],
+                    "sub_experiment_id": [
+                        "none"
+                    ],
+                    "table_id": [
+                        "Amon"
+                    ],
+                    "title": "CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr",
+                    "type": "Dataset",
+                    "url": [
+                        "http://esgf-data1.llnl.gov/thredds/catalog/esgcet/4/CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr.v20191003.xml#CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr.v20191003|application/xml+thredds|THREDDS",
+                        "http://esgf-data1.llnl.gov/las/getUI.do?catid=BDA7D633E3E4065F7F7D07B5DF1F5873_ns_CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr.v20191003|application/las|LAS"
+                    ],
+                    "variable": [
+                        "n2oglobal"
+                    ],
+                    "variable_id": [
+                        "n2oglobal"
+                    ],
+                    "variable_long_name": [
+                        "Global Mean Mole Fraction of N2O"
+                    ],
+                    "variable_units": [
+                        "1e-09"
+                    ],
+                    "variant_label": [
+                        "r12i1p1f1"
+                    ],
+                    "xlink": [
+                        "http://cera-www.dkrz.de/WDCC/meta/CMIP6/CMIP6.CMIP.IPSL.IPSL-CM6A-LR.abrupt-4xCO2.r12i1p1f1.Amon.n2oglobal.gr.v20191003.json|Citation|citation",
+                        "http://hdl.handle.net/hdl:21.14100/ab1fbdc6-6b9c-3d1f-ad8f-edc90071bf18|PID|pid"
+                    ],
+                    "_version_": 1646841450017587200,
+                    "retracted": false,
+                    "_timestamp": "2019-10-08T15:59:54.075Z",
+                    "score": 1.0
+                }
+            }
+        ]
+    }
+}
