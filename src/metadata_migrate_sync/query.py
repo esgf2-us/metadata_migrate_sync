@@ -20,7 +20,7 @@ params_search = {
     "wt": "json",
 }
 
-logger = provenance.get_logger()
+logger = provenance.get_logger(__name__)
 
 class BaseQuery(BaseModel):
     end_point: str | UUID

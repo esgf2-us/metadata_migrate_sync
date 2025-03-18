@@ -66,7 +66,7 @@ class provenance(BaseModel):
 
 
     @classmethod
-    def get_logger(cls) -> logging.Logger:
+    def get_logger(cls, name:str) -> logging.Logger:
 
         logging_config = {
             "version": 1,
@@ -98,5 +98,5 @@ class provenance(BaseModel):
         }
 
         logging.config.dictConfig(logging_config)
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger(name)
         return logger

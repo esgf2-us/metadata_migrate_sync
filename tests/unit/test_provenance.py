@@ -2,6 +2,7 @@ from metadata_migrate_sync.provenance import provenance
 
 import logging
 import pytest
+import os
 
 
 @pytest.fixture
@@ -14,6 +15,7 @@ def task_info():
         "ingest_index_id": "c123975a-246d-421f-8819-4659edf91e44",
         "ingest_index_type": "globus",
         "ingest_index_schema": "ESGF1.5",
+        "log_file": "test_prov.log",
     }
 
 def test_provenance_prov(task_info):
@@ -27,11 +29,10 @@ def test_provenance_prov(task_info):
 def test_proveneance_log(task_info):
 
     prov = provenance(**task_info)
-    logger = prov.get_logger()
+    logger = prov.get_logger(__name__)
     logger.setLevel(logging.INFO)
 
-    logger.debug('This is a debug message')
-    logger.info('This is an info message')
-    logger.warning('This is a warning message')
-    logger.error('This is an error message')
-    logger.critical('This is a critical message')
+    assert provenance._log_file == os.path.basename(logger.root.handlers[0].baseFilename)
+
+    logger.info("test")
+

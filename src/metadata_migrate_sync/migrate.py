@@ -47,14 +47,14 @@ def metadata_migrate(
     # for ReadWirte projects, need a cut-off date.
     if project in ProjectReadWrite:
         search_dict = {
-            **params_search, 
-            "q":"project:" + project.value,
-            "fq":"timestamp:[* TO 2025-03-16T00:00:00Z]"
-        } 
+            **params_search,
+            "q": "project:" + project.value,
+            "fq": "timestamp:[* TO 2025-03-16T00:00:00Z]",
+        }
     else:
         search_dict = {
-            **params_search, 
-            "q":"project:" + project.value,
+            **params_search,
+            "q": "project:" + project.value,
         }
 
     sq = SolrQuery(
@@ -65,7 +65,6 @@ def metadata_migrate(
         query=search_dict,
     )
 
-
     # ingest
     ig = GlobusIngest(
         end_point=prov.ingest_index_id,
@@ -74,7 +73,7 @@ def metadata_migrate(
     )
 
     # set the initial cursormark
-    sq.get_cursormark(review = False)
+    sq.get_cursormark(review=False)
 
     n = 0
     for page in sq.run():
@@ -83,7 +82,7 @@ def metadata_migrate(
         gmeta_ingest = generate_gmeta_list(page, metatype)
 
         ig.ingest(gmeta_ingest)
-        ig.prov_collect(gmeta_ingest, review = False, current_query=sq._current_query)
+        ig.prov_collect(gmeta_ingest, review=False, current_query=sq._current_query)
 
         # for test purpose
         if n > 5:
@@ -91,7 +90,6 @@ def metadata_migrate(
 
     # clean up
     pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
-
 
 
 if __name__ == "__main__":
