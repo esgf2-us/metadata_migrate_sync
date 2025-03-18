@@ -1,6 +1,8 @@
 """query for solr and globus both"""
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 from uuid import UUID
 from pydantic import BaseModel
 from typing import Literal, Any, Generator
@@ -101,31 +103,86 @@ class SolrQuery(BaseQuery):
                             self.query["cursorMark"] = last_query.cursorMark
                             self._restart = True
 
+
+    def _make_request(self, url: str, params: dict[str, Any]) -> dict[str, Any] | None:
+        """
+        Make an HTTP GET request with retry logic.
+
+        Args:
+            url (str): The URL to make the request to.
+            params (dict[str, Any]): Query parameters for the request.
+
+        Returns:
+            dict[str, Any] | None: The JSON response if successful, None otherwise.
+        """
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=0.5,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=["GET"]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        http = requests.Session()
+        http.mount("https://", adapter)
+        http.mount("http://", adapter)
+
+        try:
+            response = http.get(url, params=params)
+            response.raise_for_status()
+            response_time = response.elapsed.total_seconds()
+            return response.json(), response_time
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request failed at {url}: {e}")
+            return None
+
+    def _process_response(self, response_json: dict[str, Any]) -> Generator[Any, None, None]:
+        """
+        Process the JSON response and yield the results.
+
+        Args:
+            response_json (dict[str, Any]): The JSON response from the API.
+
+        Yields:
+            Generator[Any, None, None]: The documents from the response.
+        """
+        docs = response_json.get("response", {}).get("docs", [])
+        yield docs
+
+        # Check if this is the last page
+        if self.query["cursorMark"] == response_json.get("nextCursorMark"):
+            logger.info("Reached the last page.")
+            return
+
+        # Get the next page in the review mode
+        if self._review:
+            if not self._review_list:
+                logger.info("No more pages to review.")
+                return
+            self._review_page, self._review_cursor = self._review_list.pop()
+            self.query["cursorMark"] = self._review_cursor
+        else:
+            self.query["cursorMark"] = response_json.get("nextCursorMark")
+
+        # Continue processing the next page
+        yield from self.run()
+
+
     def run(self) -> Generator[Any, None, None]:
+        """
+        Query solr index in a paginated manner.
 
-        index_url = self.end_point
+        Yields:
+            Generator[Any, None, None]: The docs from each page.
+        """
 
-        response = requests.get(index_url, params=self.query)
-        if response.status_code == requests.codes.ok:
-            res_json = response.json()
-            self.prov_collect(response.url, response.elapsed.total_seconds(), res_json)
+        result = self._make_request(self.end_point, self.query)
 
-            yield res_json.get("response").get("docs")
+        if result:
+            response_json, response_time = result
+            self.prov_collect(self.end_point, response_time, response_json) 
+            yield from self._process_response(response_json)
 
-            if self.query["cursorMark"] == res_json.get("nextCursorMark"):  # last page
-                pass
 
-            else:
-                # get next page
-                if self._review:
-                    if len(self._review_list) == 0: # last 
-                        pass
-                    else:
-                        self._review_page, self._review_cursor = self._review_list.pop()
-                        self.query["cursorMark"] = self._review_cursor
-                else:
-                    self.query["cursorMark"] = res_json.get("nextCursorMark")
-                yield from self.run()
 
     def prov_collect(
         self, req_url: str, req_time: float, response: dict[Any, Any]
