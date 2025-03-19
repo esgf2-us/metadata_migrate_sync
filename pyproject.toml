@@ -22,6 +22,8 @@ dependencies = [
     "globus-sdk>=3.51.0",
     "requests>=2.32.3",
     "sqlalchemy>=2.0.39",
+    "typer>=0.15.2",
+    "tqdm>=4.67.1",
 ]
 
 

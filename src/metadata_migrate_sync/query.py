@@ -244,12 +244,12 @@ class SolrQuery(BaseQuery):
                     numFound=response.get("response").get("numFound"),
                     n_datasets=(
                         0
-                        if "solr\/files" in self.end_point
+                        if "solr/files" in self.end_point
                         else len(response.get("response").get("docs"))
                     ),
                     n_files=(
                         0
-                        if "solr\/datasets" in self.end_point
+                        if "solr/datasets" in self.end_point
                         else len(response.get("response").get("docs"))
                     ),
                     pages=prepage.pages + 1 if prepage != None else 1,

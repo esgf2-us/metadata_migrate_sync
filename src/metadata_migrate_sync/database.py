@@ -60,6 +60,8 @@ class Query(Base):
     query_type = Column(String)
     query_time = Column(Numeric)
     date_range = Column(String)
+
+    query_datetime = Column(DateTime, default=datetime.utcnow)
     numFound = Column(String)
     n_datasets = Column(Integer)
     n_files = Column(Integer)
@@ -92,7 +94,7 @@ class Ingest(Base):
 
     task_id = Column(String)
     ingest_response = Column(String)
-    ingest_time = Column(DateTime, default=datetime.utcnow)
+    ingest_datetime = Column(DateTime, default=datetime.utcnow)
     submitted = Column(Integer, default=0)
 
     succeeded = Column(Integer, default=0)
@@ -120,6 +122,7 @@ class Files(Base):
     pages = Column(Integer, ForeignKey("query.pages"))
     query = relationship("Query", back_populates="files")
     files_id = Column(String)
+    size = Column(Integer)
     source_index = Column(String)
     target_index = Column(String)
     uri = Column(String)

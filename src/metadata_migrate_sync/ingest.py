@@ -109,6 +109,12 @@ class GlobusIngest(BaseIngest):
                         source_index=last_query.index_id,
                         target_index=str(self.end_point),
                         files_id=gmeta.get("subject"),
+
+                        if 'size' in gmeta.get("content"):
+                            size = gmeta.get("content").get("size")
+                        else:
+                            size = -1
+
                         uri=",".join(gmeta.get("content").get("url")),
                         success=0,
                     )
