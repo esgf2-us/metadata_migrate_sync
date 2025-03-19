@@ -40,6 +40,7 @@ class SolrQuery(BaseQuery):
 
     _current_query: Any | None = None
    
+    #_numFound: int
 
     def get_cursormark(self, review: bool = False) -> None:
         """get the cursormark from the database file"""
@@ -209,6 +210,8 @@ class SolrQuery(BaseQuery):
         self, req_url: str, req_time: float, response: dict[Any, Any]
     ) -> None:
         """collect prov and db"""
+
+        self._numFound = response.get("response").get("numFound")
 
         with MigrationDB.get_session() as session:
 

@@ -76,7 +76,9 @@ class GlobusIngest(BaseIngest):
         if response.data["acknowledged"] and response.data["success"]:
             self._submitted = True
 
-    def prov_collect(self, gingest: dict[str, Any], review:bool, current_query:Any) -> None:
+    def prov_collect(
+        self, gingest: dict[str, Any], review: bool, current_query: Any
+    ) -> None:
 
         if not self._submitted:
 
@@ -85,7 +87,9 @@ class GlobusIngest(BaseIngest):
 
         if review:
             with MigrationDB.get_session() as session:
-                current_ingest = session.query(Ingest).filterby(pages = current_query.pages)
+                current_ingest = session.query(Ingest).filterby(
+                    pages=current_query.pages
+                )
 
                 current_ingest.task_id = self._response_data.get("task_id")
                 current_ingest.ingest_response = json.dumps(self._response_data)
@@ -96,7 +100,7 @@ class GlobusIngest(BaseIngest):
         # write to db
 
         with MigrationDB.get_session() as session:
-            #last_query = session.query(Query).order_by(Query.id.desc()).first()
+            # last_query = session.query(Query).order_by(Query.id.desc()).first()
             last_query = current_query
 
             n_datasets = 0
@@ -109,12 +113,11 @@ class GlobusIngest(BaseIngest):
                         source_index=last_query.index_id,
                         target_index=str(self.end_point),
                         files_id=gmeta.get("subject"),
-
-                        if 'size' in gmeta.get("content"):
-                            size = gmeta.get("content").get("size")
-                        else:
-                            size = -1
-
+                        size=(
+                            gmeta.get("content").get("size")
+                            if "size" in gmeta.get("content")
+                            else -1
+                        ),
                         uri=",".join(gmeta.get("content").get("url")),
                         success=0,
                     )
@@ -149,12 +152,9 @@ class GlobusIngest(BaseIngest):
             session.commit()
 
 
-
-
 @validate_call
 def generate_gmeta_list(
-    docs: list[dict[str, Any]], 
-    metatype: Literal["files", "datasets"]
+    docs: list[dict[str, Any]], metatype: Literal["files", "datasets"]
 ) -> dict[str, Any]:
     """generate gmeta list for ingestion"""
 
@@ -177,4 +177,3 @@ def generate_gmeta_list(
     }
 
     return gmeta_list
-

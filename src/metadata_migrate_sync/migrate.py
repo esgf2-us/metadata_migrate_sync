@@ -5,6 +5,8 @@ migrating the solr indexes in ORNL/LLNL/ANL to globus indexes (public and staged
 from pydantic import validate_call
 from typing import Literal
 import pathlib
+from tqdm import tqdm
+import math
 
 from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.solr import SolrIndexes
@@ -79,17 +81,30 @@ def metadata_migrate(
     sq.get_cursormark(review=False)
 
     n = 0
-    for page in sq.run():
-        n = n + 1
-        ig._submitted = False
-        gmeta_ingest = generate_gmeta_list(page, metatype)
+    with tqdm(
+        sq.run(),
+        desc="Processing",
+        unit="page",
+        colour="blue",
+        bar_format="{l_bar}{bar:50}{r_bar}",
+        ncols=100,
+        ascii=" ░▒▓█",
+    ) as pbar:
+        
+        for page in pbar:
+            if not pbar.total and hasattr(sq, "_numFound") and sq._numFound:
+                pbar.total = math.ceil(sq._numFound / 1000.)
 
-        ig.ingest(gmeta_ingest)
-        ig.prov_collect(gmeta_ingest, review=False, current_query=sq._current_query)
+            n = n + 1
+            ig._submitted = False
+            gmeta_ingest = generate_gmeta_list(page, metatype)
 
-        # for test purpose
-        if n > 5:
-            break
+            ig.ingest(gmeta_ingest)
+            ig.prov_collect(gmeta_ingest, review=False, current_query=sq._current_query)
+
+            # for test purpose
+            if n > 5:
+                break
 
     # clean up
     pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
