@@ -2,6 +2,7 @@
 
 import requests
 from requests.adapters import HTTPAdapter
+from requests.exceptions import RequestException, HTTPError, ConnectionError, RetryError
 from urllib3 import Retry
 from uuid import UUID
 from pydantic import BaseModel
@@ -20,7 +21,6 @@ params_search = {
     "wt": "json",
 }
 
-logger = provenance.get_logger(__name__)
 
 class BaseQuery(BaseModel):
     end_point: str | UUID
@@ -44,6 +44,8 @@ class SolrQuery(BaseQuery):
     def get_cursormark(self, review: bool = False) -> None:
         """get the cursormark from the database file"""
 
+
+        logger = provenance._instance.get_logger(__name__)
         if review:
             # get all the failed cases in the database, re-query and re-ingest
 
@@ -74,37 +76,44 @@ class SolrQuery(BaseQuery):
                 last_query = session.query(Query).order_by(Query.id.desc()).first()
                 if last_query is None:  # new start
                     self.query["cursorMark"] = "*"
-
                     self._current_query = None
-                else:  # dirty start
-                    # get ingest
+
+                    logger.info("The query is new start")
+                else:
+
                     self._current_query = last_query
                     ingest_obj = last_query.ingest
 
-                    assert len(ingest_obj) == 0
-
-                    # if ingest_obj is None:   # never be a none
                     if len(ingest_obj) == 0:
                         self.query["cursorMark"] = last_query.cursorMark
                         self._restart = True
+
+                        logger.info("The query is restart with no corresponding ingest")
                     else:
                         filter_ingest = [
                             ing for ing in ingest_obj if ing.pages == last_query.pages
                         ]
 
-                        if len(filter_ingest) == 1:
+                        if len(filter_ingest) == 1: 
                             if filter_ingest[0].submitted == 0:
                                 self.query["cursorMark"] = last_query.cursorMark
                                 self._restart = True
+
+                                logger.info("The query is restart with failure ingest")
                             else:
                                 self.query["cursorMark"] = last_query.cursorMark_next
                                 self._restart = False
+
+                                logger.info("The query is restart in the next cursormark")
                         else:
                             self.query["cursorMark"] = last_query.cursorMark
                             self._restart = True
 
+                            logger.info("The query should not happened")
 
-    def _make_request(self, url: str, params: dict[str, Any]) -> dict[str, Any] | None:
+
+    @staticmethod
+    def _make_request(url: str, params: dict[str, Any], is_test: bool = False) -> dict[str, Any] | None | int:
         """
         Make an HTTP GET request with retry logic.
 
@@ -130,9 +139,20 @@ class SolrQuery(BaseQuery):
             response = http.get(url, params=params)
             response.raise_for_status()
             response_time = response.elapsed.total_seconds()
-            return response.json(), response_time
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request failed at {url}: {e}")
+
+            if is_test:
+                return response.status_code
+            else:
+                return response.json(), response_time, response.url
+        except ConnectionError as e:
+            raise ConnectionError(f"Failed to connect to {url}: {e}") from e
+
+        except RetryError as e:
+            raise RetryError(f"maximum fails to {url}: {e}") from e
+
+        except RequestException as e:
+            #logger.error(f"Request failed at {url}: {e}")
+            print(f"Request failed at {url}: {e}")
             return None
 
     def _process_response(self, response_json: dict[str, Any]) -> Generator[Any, None, None]:
@@ -145,18 +165,19 @@ class SolrQuery(BaseQuery):
         Yields:
             Generator[Any, None, None]: The documents from the response.
         """
+
         docs = response_json.get("response", {}).get("docs", [])
         yield docs
 
         # Check if this is the last page
         if self.query["cursorMark"] == response_json.get("nextCursorMark"):
-            logger.info("Reached the last page.")
+            print("Reached the last page.")
             return
 
         # Get the next page in the review mode
         if self._review:
             if not self._review_list:
-                logger.info("No more pages to review.")
+                print("No more pages to review.")
                 return
             self._review_page, self._review_cursor = self._review_list.pop()
             self.query["cursorMark"] = self._review_cursor
@@ -178,8 +199,8 @@ class SolrQuery(BaseQuery):
         result = self._make_request(self.end_point, self.query)
 
         if result:
-            response_json, response_time = result
-            self.prov_collect(self.end_point, response_time, response_json) 
+            response_json, response_time, response_url = result
+            self.prov_collect(response_url, response_time, response_json) 
             yield from self._process_response(response_json)
 
 

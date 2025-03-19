@@ -15,7 +15,6 @@ from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, Fil
 
 from metadata_migrate_sync.provenance import provenance
 
-logger = provenance.get_logger(__name__)
 
 class GlobusMeta(BaseModel):
     id: Literal["file", "dataset"]  # files or datasets

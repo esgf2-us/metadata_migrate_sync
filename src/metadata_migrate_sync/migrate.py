@@ -40,6 +40,8 @@ def metadata_migrate(
         type_query=metatype.capitalize(),
     )
 
+    logger = provenance._instance.get_logger(__name__)
+
     # database
     mdb = MigrationDB(prov.db_file, True)
 
@@ -71,6 +73,7 @@ def metadata_migrate(
         ep_name=target_epname,
         project=project,
     )
+
 
     # set the initial cursormark
     sq.get_cursormark(review=False)

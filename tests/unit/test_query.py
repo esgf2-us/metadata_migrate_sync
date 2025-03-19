@@ -1,9 +1,12 @@
-
-
 import requests
+import responses
+import pytest
+import urllib3
 
 from metadata_migrate_sync.query import SolrQuery, params_search
-from meta_data_migrate_sync.project import ProjectReadOnly
+from metadata_migrate_sync.project import ProjectReadOnly
+from metadata_migrate_sync.database import MigrationDB
+
 
 cmip5_cusormark_list_row10_idasc_ornl = [
 'AoE/b0NNSVA2LkFlckNoZW1NSVAuQkNDLkJDQy1FU00xLnNzcDM3MC5yMWkxcDFmMS5BbW9uLnBzLmduLnYyMDE5MDYyNC5wc19BbW9uX0JDQy1FU00xX3NzcDM3MF9yMWkxcDFmMV9nbl8yMDE1MDEtMjA1NTEyLm5jfGVzZ2YtZGF0YTA0LmRpYXNqcC5uZXQ=',
@@ -58,7 +61,13 @@ def test_query_cursormark():
 
 def test_query():
 
-   
+    params_search = {
+          "q": "project:CMIP3", 
+          "sort": "id asc",
+          "limit": 2, 
+          "cursorMark": "*",
+          "wt": "json",
+    }
 
     sq = SolrQuery(
         end_point = "http://127.0.0.1:8983/solr/files/select",
@@ -67,14 +76,62 @@ def test_query():
         project = ProjectReadOnly.CMIP3,
         query = params_search
     )
+
+    mdb = MigrationDB("test.sqlite", True)
     
     n = 0
-    for docs in sq.run(mdb):
+    for docs in sq.run():
     
          n = n + 1
          for doc in docs:
-             print (n, doc['id'])
+            assert 'id' in doc
     
-         if n > 3:
+         if n > 0:
             break
     
+
+@responses.activate
+def test_query_retry_on_server_error():
+    url = "http://example.com"
+
+    responses.add(responses.GET, url, status=500)
+    responses.add(responses.GET, url, status=500)
+
+    responses.add(responses.GET, url, status=200)
+
+    status = SolrQuery._make_request(url, params_search, True)
+
+    assert status == 200
+
+    assert len(responses.calls) == 3
+
+
+@responses.activate
+def test_query_retry_on_connection_error():
+    url = "http://example.com"
+
+    responses.add(responses.GET, url, body=ConnectionError("Connection error"))
+    responses.add(responses.GET, url, status=200)
+
+
+    with pytest.raises(Exception):
+        status = SolrQuery._make_request(url, params_search, True)
+    status = SolrQuery._make_request(url, params_search, True)
+
+    assert status == 200
+    assert len(responses.calls) == 2
+
+@responses.activate
+def test_query_exhaust_retries():
+    url = "http://example.com"
+
+    for _ in range(3):
+        responses.add(responses.GET, url, status=500)
+
+    #with pytest.raises(urllib3.exceptions.MaxRetryError):
+    with pytest.raises(requests.exceptions.RetryError):
+        SolrQuery._make_request(url, params_search, True)
+
+    assert len(responses.calls) == 4
+
+

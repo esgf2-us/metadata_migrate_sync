@@ -1,4 +1,4 @@
-from pydantic import BaseModel, AnyUrl, field_validator
+from pydantic import BaseModel, AnyUrl
 from typing import Literal, ClassVar
 from datetime import datetime
 import pathlib
@@ -12,13 +12,30 @@ import logging.config
 from uuid import UUID
 
 from importlib.metadata import distributions
+from pydantic._internal._model_construction import ModelMetaclass
 
-class provenance(BaseModel):
+
+
+class SingletonMeta(ModelMetaclass):
+    """
+    Metaclass to enforce singleton behavior while preserving Pydantic's functionality.
+    """
+    _instance = None
+
+    def __call__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__call__(*args, **kwargs)
+        return cls._instance
+
+
+class provenance(BaseModel, metaclass=SingletonMeta):
     """
     provenance class for the meta data ingest and sync
+    it is a singleton instance
     """
 
-    _log_file: ClassVar[str] = "test.log"
+
+    #_log_file: ClassVar[str] = "test_pov.log"
 
     task_name: Literal["migrate", "ingest", "sync"]
     source_index_id: str | UUID | AnyUrl
@@ -58,15 +75,33 @@ class provenance(BaseModel):
         p.metadata["Name"]: p.version for p in distributions()
     }
 
-    @field_validator("log_file")
-    @classmethod
-    def set_log_file(cls, value:str) -> str:
-        cls._log_file = value
-        return value 
+    #-_instance = None  # Class variable to store the singleton instance
+
+    #-def __new__(cls, *args, **kwargs):
+    #-    """
+    #-    Override __new__ to ensure only one instance is created.
+    #-    """
+    #-    if cls._instance is None:
+    #-        cls._instance = super().__new__(cls)
+    #-    return cls._instance
+
+    #-def __init__(self, **data):
+    #-    """
+    #-    Override __init__ to avoid reinitialization of the singleton instance.
+    #-    """
+    #-    if not hasattr(self, "initialized"):
+    #-        super().__init__(**data)
+    #-        self.initialized = True
 
 
     @classmethod
     def get_logger(cls, name:str) -> logging.Logger:
+
+        if cls._instance is None:
+            log_filename = "test.log"
+
+        else:
+            log_filename = cls._instance.log_file
 
         logging_config = {
             "version": 1,
@@ -84,7 +119,7 @@ class provenance(BaseModel):
                 "file": {
                     "level": "DEBUG",
                     "class": "logging.FileHandler",
-                    "filename": cls._log_file,
+                    "filename": log_filename,
                     "formatter": "standard",
                 },
             },

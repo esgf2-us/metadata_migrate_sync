@@ -25,6 +25,8 @@ from typing import Literal
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.solr import SolrIndexes
 
+from metadata_migrate_sync.provenance import provenance
+
 
 # Create a base class for models
 class Base(DeclarativeBase):
@@ -125,53 +127,65 @@ class Files(Base):
 
 
 class MigrationDB:
-    mdb = None
+    """it is a singleton class"""
+
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+            cls._instance.initialized = False
+        return cls._instance
+
 
     def __init__(self, db_filename: str, insert_index: bool):
+        if not self.initialized:
 
-        self._DATABASE_URL = f"sqlite:///{db_filename}"
-        self._engine = create_engine(self._DATABASE_URL, echo=False)
-        Base.metadata.create_all(self._engine)
+            self._DATABASE_URL = f"sqlite:///{db_filename}"
+            self._engine = create_engine(self._DATABASE_URL, echo=False)
+            Base.metadata.create_all(self._engine)
+              
+            logger = provenance.get_logger(__name__)
 
-        if insert_index:
-            DBsession = sessionmaker(bind=self._engine)
-            with DBsession() as session:
 
-                if session.query(Index).count() > 0:
-                    pass
-                else:
+            logger.info("this is the only initalization in database")
 
-                    # solr indexes
-                    index_list = []
-                    for n, s in SolrIndexes.indexes.items():
+            if insert_index:
+                DBsession = sessionmaker(bind=self._engine)
+                with DBsession() as session:
 
-                        index_list.append(
-                            Index(
-                                index_id=s.index_id,
-                                index_name=s.index_name,
-                                index_type=s.index_type,
-                            )
-                        )
-                    # globus indexes
-                    for d in [
-                        GlobusClient._client_test["indexes"],
-                        GlobusClient._client_prod_migration["indexes"],
-                        GlobusClient._client_prod_sync["indexes"],
-                    ]:
-                        if isinstance(d, dict):
-                            for name, index in d.items():
-                                index_list.append(
-                                    Index(
-                                        index_id=index, index_name=name, index_type="globus"
-                                    )
+                    if session.query(Index).count() > 0:
+                        pass
+                    else:
+
+                        # solr indexes
+                        index_list = []
+                        for n, s in SolrIndexes.indexes.items():
+
+                            index_list.append(
+                                Index(
+                                    index_id=s.index_id,
+                                    index_name=s.index_name,
+                                    index_type=s.index_type,
                                 )
+                            )
+                        # globus indexes
+                        for d in [
+                            GlobusClient._client_test["indexes"],
+                            GlobusClient._client_prod_migration["indexes"],
+                            GlobusClient._client_prod_sync["indexes"],
+                        ]:
+                            if isinstance(d, dict):
+                                for name, index in d.items():
+                                    index_list.append(
+                                        Index(
+                                            index_id=index, index_name=name, index_type="globus"
+                                        )
+                                    )
 
-                    session.add_all(index_list)
-                    session.commit()
-        self.__class__.mdb = self
-
+                        session.add_all(index_list)
+                        session.commit()
     @classmethod
     def get_session(cls):
 
-        DBsession = sessionmaker(bind = cls.mdb._engine)
+        DBsession = sessionmaker(bind = cls._instance._engine)
         return DBsession()

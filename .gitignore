@@ -4,3 +4,4 @@ __pycache__/
 *$py.class
 *.sqlite
 *.log
+src/metadata_migrate_sync/*.json
