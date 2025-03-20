@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 from uuid import UUID
 from typing import Any
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
+from metadata_migrate_sync.provenance import provenance
 
 
 # from Lucasz and Nate code with some minor changes
@@ -136,10 +137,17 @@ class GlobusClient:
     @classmethod
     def get_client(cls, name: str = "test") -> ClientModel:
 
+        logger = provenance.get_logger(__name__)
+
         if cls.globus_clients[name].search_client == None:
+            logger.info("no search client and request one")
+
             cls.globus_clients[name].search_client = get_authorized_search_client(
                 cls.globus_clients[name].app_client_id,
                 cls.globus_clients[name].token_name,
             )
+
+        logger.info(f"return the search client with the name {name}.") 
+                    
         return cls.globus_clients[name]
 

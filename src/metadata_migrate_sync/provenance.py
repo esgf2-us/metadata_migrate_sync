@@ -45,29 +45,31 @@ class provenance(BaseModel, metaclass=SingletonMeta):
     ingest_index_id: str | UUID
     ingest_index_type: Literal["solr", "globus"]
     ingest_index_schema: str = "ESGF1.5"
+    cmd_line: str
 
     log_file: str | pathlib.Path = "test.log"
     prov_file: str | pathlib.Path = "test.json"
     db_file: str | pathlib.Path = "test.db"
 
-    sucessful: bool = False
+    successful: bool = False
 
-    source_index_query: str | None = None
-    type_query: Literal["Datasets", "Files"] = "Datasets"
-    success_query: bool = False
+    #source_index_query: str | None = None
+    #type_query: Literal["Datasets", "Files"] = "Datasets"
+    #success_query: bool = False
 
-    timestamp_query: datetime | None = None
-    time_query: float | None = None
-    pass_validate_query: bool = False
+    #timestamp_query: datetime | None = None
+    #time_query: float | None = None
+    #pass_validate_query: bool = False
 
-    pass_validate_ingest: bool = False
-    timestamp_ingest: datetime | None = None
+    #pass_validate_ingest: bool = False
+    #timestamp_ingest: datetime | None = None
 
     operation_system: str = platform.platform()
 
     os_environment: dict[str, str | None] = {
         "USERNAME": os.environ.get("USERNAME"),
         "SHELL": os.environ.get("SHELL"),
+        "HOSTNAME": os.environ.get("HOSTNAME"),
     }
     python_version: str = sys.version
 
@@ -107,7 +109,7 @@ class provenance(BaseModel, metaclass=SingletonMeta):
             "version": 1,
             "formatters": {
                 "standard": {
-                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                    "format": "%(asctime)s - %(funcName)s - %(levelname)s - %(message)s",
                 },
             },
             "handlers": {
@@ -133,5 +135,6 @@ class provenance(BaseModel, metaclass=SingletonMeta):
         }
 
         logging.config.dictConfig(logging_config)
-        logger = logging.getLogger(name)
+        logger = logging.getLogger()
+
         return logger

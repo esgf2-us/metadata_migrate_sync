@@ -18,7 +18,7 @@ class SolrIndexes:
         ),
         "llnl": SolrIndex(
              index_name = "llnl", 
-             index_id = "http://esfg-node.llnl.gov",
+             index_id = "http://esgf-node.llnl.gov",
              index_type = "solr"
         ),
         "anl": SolrIndex(

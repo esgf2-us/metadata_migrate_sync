@@ -6,6 +6,7 @@ from pydantic import AnyUrl, HttpUrl, AnyHttpUrl
 
 from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
+from metadata_migrate_sync.query import GlobusQuery
 
 
 def combine_enums(*enums, name="CombinedEnum"):
@@ -62,8 +63,9 @@ def migrate(
     target_ep: str = typer.Argument(
         help="target end point name", callback=validate_tgt_ep
     ),
-    meta: str = typer.Option(help="metadata type", callback=validate_meta),
     project: str = typer.Argument(help="project name", callback=validate_project),
+    meta: str = typer.Option(help="metadata type", callback=validate_meta),
+    prod: bool = typer.Option(help="production run", default=False),
 ):
 
     metadata_migrate(
@@ -71,6 +73,7 @@ def migrate(
         target_epname=target_ep,
         metatype=meta,
         project=project,
+        production=prod,
     )
 
 
@@ -81,6 +84,26 @@ def check_ingest():
 
 @app.command()
 def sync():
+    pass
+
+
+@app.command()
+def query_globus(
+    globus_ep: str = typer.Argument(
+        help="globus end point name", callback=validate_tgt_ep),
+    project: str = typer.Argument(help="project name", callback=validate_project),
+):
+
+
+    gq = GlobusQuery(
+        end_point="52eff156-6141-4fde-9efe-c08c92f3a706",
+        ep_type="globus",
+        ep_name="test",
+        project=project,
+    )
+
+    gq.run()
+
     pass
 
 

@@ -8,11 +8,13 @@ from uuid import UUID
 from pydantic import BaseModel
 from typing import Literal, Any, Generator
 import sys
+import json
 
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.database import MigrationDB, Index, Query, Ingest
 from metadata_migrate_sync.provenance import provenance
 
+from metadata_migrate_sync.globus import GlobusClient
 
 params_search = {
     "sort": "id asc",
@@ -24,7 +26,7 @@ params_search = {
 
 class BaseQuery(BaseModel):
     end_point: str | UUID
-    ep_type: Literal["solr", "gloubs"]
+    ep_type: Literal["solr", "globus"]
     ep_name: str
     project: ProjectReadOnly | ProjectReadWrite
 
@@ -114,7 +116,7 @@ class SolrQuery(BaseQuery):
 
 
     @staticmethod
-    def _make_request(url: str, params: dict[str, Any], is_test: bool = False) -> dict[str, Any] | None | int:
+    def _make_request(url: str, params: dict[str, Any], is_test: bool = False) -> tuple[Any, Any, Any] | None | int:
         """
         Make an HTTP GET request with retry logic.
 
@@ -125,6 +127,8 @@ class SolrQuery(BaseQuery):
         Returns:
             dict[str, Any] | None: The JSON response if successful, None otherwise.
         """
+        logger = provenance.get_logger(__name__)
+
         retry_strategy = Retry(
             total=3,
             backoff_factor=0.5,
@@ -146,14 +150,15 @@ class SolrQuery(BaseQuery):
             else:
                 return response.json(), response_time, response.url
         except ConnectionError as e:
+            logger.error(f"Failed to connect to {url}: {e}")
             raise ConnectionError(f"Failed to connect to {url}: {e}") from e
 
         except RetryError as e:
+            logger.error(f"maximum fails to {url}: {e}")
             raise RetryError(f"maximum fails to {url}: {e}") from e
 
         except RequestException as e:
-            #logger.error(f"Request failed at {url}: {e}")
-            print(f"Request failed at {url}: {e}")
+            logger.error(f"Request failed at {url}: {e}")
             return None
 
     def _process_response(self, response_json: dict[str, Any]) -> Generator[Any, None, None]:
@@ -166,19 +171,20 @@ class SolrQuery(BaseQuery):
         Yields:
             Generator[Any, None, None]: The documents from the response.
         """
+        logger = provenance.get_logger(__name__)
 
         docs = response_json.get("response", {}).get("docs", [])
         yield docs
 
         # Check if this is the last page
         if self.query["cursorMark"] == response_json.get("nextCursorMark"):
-            print("Reached the last page.")
+            logger.info("Reached the last page.")
             return
 
         # Get the next page in the review mode
         if self._review:
             if not self._review_list:
-                print("No more pages to review.")
+                logger.info("No more pages to review.")
                 return
             self._review_page, self._review_cursor = self._review_list.pop()
             self.query["cursorMark"] = self._review_cursor
@@ -199,10 +205,12 @@ class SolrQuery(BaseQuery):
 
         result = self._make_request(self.end_point, self.query)
 
+
         if result:
             response_json, response_time, response_url = result
             self.prov_collect(response_url, response_time, response_json) 
             yield from self._process_response(response_json)
+       
 
 
 
@@ -269,7 +277,24 @@ class SolrQuery(BaseQuery):
                 self._current_query = curpage
 
 
-class GlobusQuey(BaseQuery):
+class GlobusQuery(BaseQuery):
     """query globus index"""
 
-    pass
+    def run(self):
+
+        gc = GlobusClient()
+        cm = gc.get_client(name = "test")
+        sc = cm.search_client
+        sq = cm.search_query
+
+        sq.set_query("us-index")
+
+
+        if self.ep_name == "test":
+            _globus_index_id = cm.indexes[self.ep_name]
+        else:
+            _globus_index_id = cm.indexes[self.project.value]
+
+        r = sc.post_search(_globus_index_id, sq)
+        with open('data.json', 'w') as f:
+            json.dump(r.data, f)

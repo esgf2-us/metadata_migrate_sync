@@ -7,6 +7,7 @@ from typing import Any, Literal
 from uuid import UUID
 import json
 from globus_sdk import SearchClient, GlobusError
+from datetime import datetime
 
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.database import MigrationDB, Query, Ingest, Datasets, Files
@@ -30,6 +31,7 @@ class GlobusIngestModel(BaseModel):
     @field_validator("ingest_data")
     @classmethod
     def check_gmeta(cls, data: dict[Any, Any]) -> dict[Any, Any]:
+        logger = provenance._instance.get_logger(__name__)
         if len(data.keys()) != 1 or "gmeta" not in data:
             logger.error("no gmeta in the dict")
             raise ValueError("no gmeta in the dict")
@@ -50,6 +52,11 @@ class GlobusIngest(BaseIngest):
 
     # from globus2solr
     def ingest(self, gingest: dict[str, Any]) -> None:
+
+        logger = provenance._instance.get_logger(__name__)
+
+        current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+        logger.info("start the inject now at " + current_timestr)
 
         GlobusIngestModel.model_validate(gingest)
 
@@ -75,17 +82,28 @@ class GlobusIngest(BaseIngest):
 
         if response.data["acknowledged"] and response.data["success"]:
             self._submitted = True
+        
+            current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+            logger.info("the ingestion submitted successfully at " + current_timestr)
+        else:
+            logger.info("the ingestion submission failed at " + current_timestr)
+
 
     def prov_collect(
         self, gingest: dict[str, Any], review: bool, current_query: Any
     ) -> None:
 
+        logger = provenance._instance.get_logger(__name__)
+
         if not self._submitted:
 
-            # log
+            logger.info("the submission failed, so no need to write ingest/datafiles/files tabs")
             return None
 
         if review:
+
+            logger.info("in review mode, the failed ingest record will be updated by the new task_id")
+            logger.info("the succuss record in datasets/files tabs will be updated by check_ingest")
             with MigrationDB.get_session() as session:
                 current_ingest = session.query(Ingest).filterby(
                     pages=current_query.pages
@@ -98,6 +116,8 @@ class GlobusIngest(BaseIngest):
             return
 
         # write to db
+
+        logger.info("ingest sumbmitted, so add the files/datasets to the tabs")
 
         with MigrationDB.get_session() as session:
             # last_query = session.query(Query).order_by(Query.id.desc()).first()
@@ -150,6 +170,7 @@ class GlobusIngest(BaseIngest):
 
             session.add(ingest_obj)
             session.commit()
+        logger.info("add records to the files/datasets to the tabs successfully")
 
 
 @validate_call

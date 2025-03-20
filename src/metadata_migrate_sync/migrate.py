@@ -7,6 +7,9 @@ from typing import Literal
 import pathlib
 from tqdm import tqdm
 import math
+import sys
+from datetime import datetime
+import logging
 
 from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.solr import SolrIndexes
@@ -24,6 +27,7 @@ def metadata_migrate(
     target_epname: Literal["test", "public", "stage"],
     metatype: Literal["files", "datasets"],
     project: ProjectReadOnly | ProjectReadWrite,
+    production: bool,
 ) -> None:
 
     # setup the provenance
@@ -36,16 +40,23 @@ def metadata_migrate(
         ingest_index_id=GlobusClient.globus_clients["test"].indexes["test"],
         ingest_index_type="globus",
         ingest_index_schema="ESGF1.5",
-        log_file=f"migration_{source_epname}_{target_epname}_{project}_{metatype}.log",
-        prov_file=f"migration_{source_epname}_{target_epname}_{project}_{metatype}.json",
-        db_file=f"migration_{source_epname}_{target_epname}_{project}_{metatype}.sqlite",
+        log_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.log",
+        prov_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.json",
+        db_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.sqlite",
         type_query=metatype.capitalize(),
+        cmd_line=" ".join(sys.argv)
     )
+
+    pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
 
     logger = provenance._instance.get_logger(__name__)
 
+    logger.info(f"set up the provenance and save it to {prov.prov_file}")
+    logger.info(f"log file is at {prov.log_file}")
+
     # database
     mdb = MigrationDB(prov.db_file, True)
+    logger.info(f"initialed the sqllite database at {prov.db_file}")
 
     # query generator
     # for ReadWirte projects, need a cut-off date.
@@ -62,6 +73,20 @@ def metadata_migrate(
             "fq": "_timestamp:[* TO 2025-03-16T00:00:00Z]",
         }
 
+    if production:
+        search_dict["row"] = 500
+        maxpage = None
+        if target_epname == "test":
+            logger.warning("production run generaly does not ingest to test index")
+
+    else:
+        search_dict["row"] = 2
+        maxpage = 5
+        if target_epname != "test":
+            logger.warning("test run generaly does not ingest to production indexes")
+
+    logger.info("finish the query setting")
+
     sq = SolrQuery(
         end_point=f"{prov.source_index_id}/{prov.source_index_type}/{metatype}/select",
         ep_type=prov.source_index_type,
@@ -77,8 +102,15 @@ def metadata_migrate(
         project=project,
     )
 
+    logger.info("instantiate query and ingest classes")
+
     # set the initial cursormark
     sq.get_cursormark(review=False)
+    logger.info("find the cursormark at " + sq.query["cursorMark"])
+
+
+    current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("query-ingest start at " + current_timestr)
 
     n = 0
     with tqdm(
@@ -95,6 +127,10 @@ def metadata_migrate(
             if not pbar.total and hasattr(sq, "_numFound") and sq._numFound:
                 pbar.total = math.ceil(sq._numFound / 1000.0)
 
+            if (len(page) == 0):
+                logger.info(f"no data in this page {n}. stop the ingestion")
+                break
+
             n = n + 1
             ig._submitted = False
             gmeta_ingest = generate_gmeta_list(page, metatype)
@@ -102,18 +138,14 @@ def metadata_migrate(
             ig.ingest(gmeta_ingest)
             ig.prov_collect(gmeta_ingest, review=False, current_query=sq._current_query)
 
-            # for test purpose
-            if n > 5:
-                break
+            if not production and (maxpage is not None):
+                if n > maxpage:
+                    break
 
+    current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("query-ingest stop at " + current_timestr)
+    logger.info(f"Processing total pages {n}")
     # clean up
+    logging.shutdown()
+    prov.successful = True
     pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
-
-
-if __name__ == "__main__":
-    metadata_migrate(
-        source_epname="ornl",
-        target_epname="test",
-        metatype="files",
-        project=ProjectReadWrite.CMIP6,
-    )
