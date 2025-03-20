@@ -109,7 +109,7 @@ class GlobusClient:
         "search_client": None,
         "search_query": SearchQuery(""),
         "indexes": {
-            ProjectReadWrite.CMIP6.value: "a37bc34d-de15-493b-9221-b95b13114fd8",
+            "backup": "a37bc34d-de15-493b-9221-b95b13114fd8",
             ProjectReadWrite.CMIP6PLUS.value: "1f385759-596e-4085-8d79-5b1dfedd1ca2",
             ProjectReadWrite.DRCDP.value: "c7cc5d1e-5740-49c2-aa10-fe31f3bcb035",
             ProjectReadWrite.E3SM.value: "f5a2d874-30ef-40a0-8c8d-e2498f3bd026",
