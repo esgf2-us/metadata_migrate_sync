@@ -18,7 +18,7 @@ class ProjectReadOnly(str, Enum):
     CMIP5 = "CMIP5"
     CMIP6 = "CMIP6"
     CREATETP = "CREATE-IP"
-    E3SMSUPPL = "E3SM-supplement"
+    E3SMSUPPL = "e3sm-supplement"
     GEOMIP = "GeoMIP"
     LUCID = "LUCID"
     TAMIP = "TAMIP"
