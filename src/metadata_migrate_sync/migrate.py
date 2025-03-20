@@ -53,12 +53,13 @@ def metadata_migrate(
         search_dict = {
             **params_search,
             "q": "project:" + project.value,
-            "fq": "timestamp:[* TO 2025-03-16T00:00:00Z]",
+            "fq": "_timestamp:[* TO 2025-03-16T00:00:00Z]",
         }
     else:
         search_dict = {
             **params_search,
             "q": "project:" + project.value,
+            "fq": "_timestamp:[* TO 2025-03-16T00:00:00Z]",
         }
 
     sq = SolrQuery(
@@ -76,7 +77,6 @@ def metadata_migrate(
         project=project,
     )
 
-
     # set the initial cursormark
     sq.get_cursormark(review=False)
 
@@ -90,10 +90,10 @@ def metadata_migrate(
         ncols=100,
         ascii=" ░▒▓█",
     ) as pbar:
-        
+
         for page in pbar:
             if not pbar.total and hasattr(sq, "_numFound") and sq._numFound:
-                pbar.total = math.ceil(sq._numFound / 1000.)
+                pbar.total = math.ceil(sq._numFound / 1000.0)
 
             n = n + 1
             ig._submitted = False

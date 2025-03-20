@@ -165,9 +165,9 @@ def generate_gmeta_list(
         converted_doc = convert_to_esgf_1_5(doc)
         gmeta_dict = {
             "id": metatype[:-1],
-            "subject": doc.get("id"),
+            "subject": converted_doc.get("id"),
             "visible_to": ["public"],
-            "content": doc,
+            "content": converted_doc,
         }
         gmeta_entries.append(gmeta_dict)
 

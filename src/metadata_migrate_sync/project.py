@@ -1,20 +1,32 @@
 from enum import Enum
 
 
+# change.md #3a78b9f
+# The index will only contain metadata for the
+# CMIP3, CMIP5, CMIP6, CREATE-IP, DRCDP, E3SM, E3SM-supplement,
+# GeoMIP, input4MIPS2, LUCID, obs4MIPs, and TAMIP projects
+
+# CMIP6 was moved to readonly project in the meeting note
+# https://docs.google.com/document/d/1ajruy9E6qneOK5y8ijpERYIB8zYUbldfWBBhIZwAkGM/edit?tab=t.0
+#
+
 
 class ProjectReadOnly(str, Enum):
     """read-only projects"""
+
     CMIP3 = "CMIP3"
     CMIP5 = "CMIP5"
+    CMIP6 = "CMIP6"
     CREATETP = "CREATE-IP"
     E3SMSUPPL = "E3SM-supplement"
     GEOMIP = "GeoMIP"
     LUCID = "LUCID"
     TAMIP = "TAMIP"
 
+
 class ProjectReadWrite(str, Enum):
     """read-write projects"""
-    CMIP6 = "CMIP6" 
+
     CMIP6PLUS = "CMIP6Plus"
     DRCDP = "DRCDP"
     E3SM = "E3SM"
