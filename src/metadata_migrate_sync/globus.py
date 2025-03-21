@@ -139,15 +139,22 @@ class GlobusClient:
 
         logger = provenance.get_logger(__name__)
 
-        if cls.globus_clients[name].search_client == None:
-            logger.info("no search client and request one")
+        if name == "public":
+            index_name = "prod-migration"
+        elif name == "stage":
+            index_name = "prod-sync"
+        elif name == "test":
+            index_name = "test"
 
-            cls.globus_clients[name].search_client = get_authorized_search_client(
-                cls.globus_clients[name].app_client_id,
-                cls.globus_clients[name].token_name,
+        if cls.globus_clients[index_name].search_client == None:
+            logger.info(f"no search client and request for the index {index_name}")
+
+            cls.globus_clients[index_name].search_client = get_authorized_search_client(
+                cls.globus_clients[index_name].app_client_id,
+                cls.globus_clients[index_name].token_name,
             )
 
         logger.info(f"return the search client with the name {name}.") 
                     
-        return cls.globus_clients[name]
+        return cls.globus_clients[index_name]
 

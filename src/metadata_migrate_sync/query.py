@@ -251,7 +251,7 @@ class SolrQuery(BaseQuery):
                     query_str=req_url.split("?")[1],
                     query_type="solr",
                     query_time=req_time,
-                    date_range="[* To *]" if isinstance(self.project, ProjectReadOnly) else self.query["q"],
+                    date_range="[* To *]" if not self.query.get("fq") else self.query.get("fq"),
                     numFound=response.get("response").get("numFound"),
                     n_datasets=(
                         0

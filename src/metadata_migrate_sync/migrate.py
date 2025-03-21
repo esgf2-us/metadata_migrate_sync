@@ -31,14 +31,21 @@ def metadata_migrate(
 ) -> None:
 
     # setup the provenance
+
+    if target_epname != "test" and production:
+        client_name = "prod-migration"
+    else:
+        client_name = "test"
+ 
     prov = provenance(
         task_name="migrate",
         source_index_id=SolrIndexes.indexes[source_epname].index_id,
         source_index_type=SolrIndexes.indexes[source_epname].index_type,
+        source_index_name=source_epname,
         source_index_schema=SolrIndexes.indexes[source_epname].index_type,
-        # ingest_index_id = GlobusClient.globus_clients["prod-migration"].indexes[target_epname],
-        ingest_index_id=GlobusClient.globus_clients["test"].indexes["test"],
+        ingest_index_id = GlobusClient.globus_clients[client_name].indexes[target_epname],
         ingest_index_type="globus",
+        ingest_index_name=target_epname,
         ingest_index_schema="ESGF1.5",
         log_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.log",
         prov_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.json",
@@ -87,6 +94,7 @@ def metadata_migrate(
 
     logger.info("finish the query setting")
 
+
     sq = SolrQuery(
         end_point=f"{prov.source_index_id}/{prov.source_index_type}/{metatype}/select",
         ep_type=prov.source_index_type,
@@ -133,10 +141,16 @@ def metadata_migrate(
 
             n = n + 1
             ig._submitted = False
-            gmeta_ingest = generate_gmeta_list(page, metatype)
+            gmeta_ingest, new_page = generate_gmeta_list(page, metatype)
 
-            ig.ingest(gmeta_ingest)
-            ig.prov_collect(gmeta_ingest, review=False, current_query=sq._current_query)
+            if len(gmeta_ingest["ingest_data"]["gmeta"]) > 0:
+                ig.ingest(gmeta_ingest)
+            else:
+                ig._response_data = None
+                ig._submitted = True
+               
+
+            ig.prov_collect(new_page, review=False, current_query=sq._current_query, metatype=metatype)
 
             if not production and (maxpage is not None):
                 if n > maxpage:

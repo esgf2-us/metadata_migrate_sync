@@ -7,6 +7,7 @@ from pydantic import AnyUrl, HttpUrl, AnyHttpUrl
 from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.query import GlobusQuery
+from metadata_migrate_sync.globus import GlobusClient
 
 
 def combine_enums(*enums, name="CombinedEnum"):
@@ -78,7 +79,31 @@ def migrate(
 
 
 @app.command()
-def check_ingest():
+def check_ingest(
+    globus_ep: str = typer.Argument(
+        help="globus end point name", callback=validate_tgt_ep),
+    project: str = typer.Argument(help="project name", callback=validate_project),
+):
+
+    gc = GlobusClient()
+    cm = gc.get_client(name = globus_ep)
+
+    sc = cm.search_client
+
+    if project in ProjectReadOnly:
+        index_id = cm.indexes.get(globus_ep)
+       
+
+    if project in ProjectReadWrite:
+        index_id = cm.indexes.get(project.value)
+
+    if index_id:
+        print (sc.get_index(index_id))
+        print (sc.get_task_list(index_id))
+    else:
+        print (f"Cannot find index for {project} in the {globus_ep} group, find it in public group")
+
+    
     pass
 
 

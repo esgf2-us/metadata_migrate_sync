@@ -90,7 +90,7 @@ class GlobusIngest(BaseIngest):
 
 
     def prov_collect(
-        self, gingest: dict[str, Any], review: bool, current_query: Any
+        self, docs: list[dict[str, Any]], review: bool, current_query: Any, metatype: Literal["files", "datasets"]
     ) -> None:
 
         logger = provenance._instance.get_logger(__name__)
@@ -118,6 +118,7 @@ class GlobusIngest(BaseIngest):
         # write to db
 
         logger.info("ingest sumbmitted, so add the files/datasets to the tabs")
+ 
 
         with MigrationDB.get_session() as session:
             # last_query = session.query(Query).order_by(Query.id.desc()).first()
@@ -125,45 +126,56 @@ class GlobusIngest(BaseIngest):
 
             n_datasets = 0
             n_files = 0
-            for gmeta in gingest["ingest_data"]["gmeta"]:
+            for doc in docs:
+                if metatype == "files":
 
-                if gmeta.get("id") == "file":
+                    if 'url' in doc:
+                        urls = ",".join(doc.get("url"))
+                    else:
+                        urls = "NoURL"
                     files_obj = Files(
                         query=last_query,
                         source_index=last_query.index_id,
                         target_index=str(self.end_point),
-                        files_id=gmeta.get("subject"),
+                        files_id=doc.get("id"),
                         size=(
-                            gmeta.get("content").get("size")
-                            if "size" in gmeta.get("content")
+                            doc.get("size")
+                            if "size" in doc
                             else -1
                         ),
-                        uri=",".join(gmeta.get("content").get("url")),
-                        success=0,
+                        uri=urls,
+                        success=-9 if "skip_ingest" in doc else 0,
                     )
                     n_files += 1
 
                     session.add(files_obj)
 
-                elif gmeta.get("id") == "dataset":
+                elif metatype == "datasets":
                     datasets_obj = Datasets(
                         query=last_query,
                         source_index=last_query.index_id,
                         target_index=str(self.end_point),
-                        datasets_id=gmeta.get("subject"),
-                        uri=",".join(gmeta.get("content").get("url")),
-                        success=0,
+                        datasets_id=doc.get("id"),
+                        #uri=",".join(doc.get("url")),
+                        success=-9 if "skip_ingest" in doc else 0,
                     )
                     session.add(datasets_obj)
                     n_datasets += 1
 
+            if self._response_data:
+                task_id = self._response_data.get("task_id")
+                ingest_response = json.dumps(self._response_data)
+            else:
+                task_id="skip"
+                ingest_response="skip"
+
             ingest_obj = Ingest(
-                n_ingested=len(gingest["ingest_data"]["gmeta"]),
+                n_ingested=len(docs),
                 n_datasets=n_datasets,
                 n_files=n_files,
                 index_id=str(self.end_point),
-                task_id=self._response_data.get("task_id"),
-                ingest_response=json.dumps(self._response_data),
+                task_id=task_id,
+                ingest_response=ingest_response,
                 query=last_query,
                 submitted=1,
             )
@@ -176,14 +188,20 @@ class GlobusIngest(BaseIngest):
 @validate_call
 def generate_gmeta_list(
     docs: list[dict[str, Any]], metatype: Literal["files", "datasets"]
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """generate gmeta list for ingestion"""
 
     from metadata_migrate_sync.convert import convert_to_esgf_1_5
 
     gmeta_entries = []
+    all_entries = []
     for doc in docs:
-        converted_doc = convert_to_esgf_1_5(doc)
+        converted_doc = convert_to_esgf_1_5(doc, metatype)
+        if converted_doc is None:
+            doc["skip_ingest"] = True
+            all_entries.append(doc)
+            continue
+        
         gmeta_dict = {
             "id": metatype[:-1],
             "subject": converted_doc.get("id"),
@@ -191,10 +209,11 @@ def generate_gmeta_list(
             "content": converted_doc,
         }
         gmeta_entries.append(gmeta_dict)
+        all_entries.append(doc)
 
     gmeta_list = {
         "ingest_type": "GMetaList",
         "ingest_data": {"gmeta": gmeta_entries},
     }
 
-    return gmeta_list
+    return gmeta_list, all_entries
