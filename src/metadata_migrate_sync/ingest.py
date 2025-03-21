@@ -63,7 +63,7 @@ class GlobusIngest(BaseIngest):
         gc = GlobusClient.get_client(name=self.ep_name)
         sc = gc.search_client
 
-        if self.ep_name == "test":
+        if self.ep_name == "test" or self.ep_name == "public":
             _globus_index_id = gc.indexes[self.ep_name]
         else:
             _globus_index_id = gc.indexes[self.project.value]

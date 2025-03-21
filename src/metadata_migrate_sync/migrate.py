@@ -88,7 +88,7 @@ def metadata_migrate(
 
     else:
         search_dict["row"] = 2
-        maxpage = 5
+        maxpage = 2
         if target_epname != "test":
             logger.warning("test run generaly does not ingest to production indexes")
 
@@ -133,7 +133,7 @@ def metadata_migrate(
 
         for page in pbar:
             if not pbar.total and hasattr(sq, "_numFound") and sq._numFound:
-                pbar.total = math.ceil(sq._numFound / 1000.0)
+                pbar.total = math.ceil(sq._numFound / 500.0)
 
             if (len(page) == 0):
                 logger.info(f"no data in this page {n}. stop the ingestion")

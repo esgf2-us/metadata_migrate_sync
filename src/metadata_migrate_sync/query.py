@@ -287,7 +287,7 @@ class GlobusQuery(BaseQuery):
         sc = cm.search_client
         sq = cm.search_query
 
-        sq.set_query("us-index")
+        sq.set_query("CMIP5")
 
 
         if self.ep_name == "test":

@@ -90,7 +90,8 @@ class GlobusClient:
         "search_client": None,
         "search_query": SearchQuery(""),
         "indexes": {
-            "test": "52eff156-6141-4fde-9efe-c08c92f3a706",
+            "test_1": "52eff156-6141-4fde-9efe-c08c92f3a706",
+            "test": "a2f1ac3a-bb7c-4be2-b3f5-cbd2b6a3e17b",
         },
     }
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import typer
 from uuid import UUID
 from enum import Enum
@@ -100,6 +101,7 @@ def check_ingest(
     if index_id:
         print (sc.get_index(index_id))
         print (sc.get_task_list(index_id))
+        print (sc.get_task("aabd0fce-3b51-4723-b1e2-19972e7161a4"))
     else:
         print (f"Cannot find index for {project} in the {globus_ep} group, find it in public group")
 
@@ -111,6 +113,15 @@ def check_ingest(
 def sync():
     pass
 
+@app.command()
+def create_index():
+    gc = GlobusClient()
+    cm = gc.get_client(name = "test")
+    sc = cm.search_client
+
+    r = sc.create_index("minxu test index 2", "for testing purpose")
+
+    print (r)
 
 @app.command()
 def query_globus(
