@@ -81,13 +81,13 @@ def metadata_migrate(
         }
 
     if production:
-        search_dict["row"] = 500
+        search_dict["rows"] = 500
         maxpage = None
         if target_epname == "test":
             logger.warning("production run generaly does not ingest to test index")
 
     else:
-        search_dict["row"] = 2
+        search_dict["rows"] = 2
         maxpage = 2
         if target_epname != "test":
             logger.warning("test run generaly does not ingest to production indexes")
