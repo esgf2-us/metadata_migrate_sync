@@ -55,7 +55,7 @@ class GlobusIngest(BaseIngest):
 
         logger = provenance._instance.get_logger(__name__)
 
-        current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+        current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.info("start the inject now at " + current_timestr)
 
         GlobusIngestModel.model_validate(gingest)
@@ -82,29 +82,39 @@ class GlobusIngest(BaseIngest):
 
         if response.data["acknowledged"] and response.data["success"]:
             self._submitted = True
-        
-            current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+
+            current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             logger.info("the ingestion submitted successfully at " + current_timestr)
         else:
             logger.info("the ingestion submission failed at " + current_timestr)
 
-
     def prov_collect(
-        self, docs: list[dict[str, Any]], review: bool, current_query: Any, metatype: Literal["files", "datasets"]
+        self,
+        docs: list[dict[str, Any]],
+        review: bool,
+        current_query: Any,
+        metatype: Literal["files", "datasets"],
     ) -> None:
 
         logger = provenance._instance.get_logger(__name__)
 
         if not self._submitted:
 
-            logger.info("the submission failed, so no need to write ingest/datafiles/files tabs")
+            logger.info(
+                "the submission failed, so no need to write ingest/datafiles/files tabs"
+            )
             return None
 
         if review:
 
-            logger.info("in review mode, the failed ingest record will be updated by the new task_id")
-            logger.info("the succuss record in datasets/files tabs will be updated by check_ingest")
-            with MigrationDB.get_session() as session:
+            logger.info(
+                "in review mode, the failed ingest record will be updated by the new task_id"
+            )
+            logger.info(
+                "the succuss record in datasets/files tabs will be updated by check_ingest"
+            )
+            DBsession = MigrationDB.get_session()
+            with DBsession() as session:
                 current_ingest = session.query(Ingest).filterby(
                     pages=current_query.pages
                 )
@@ -118,9 +128,9 @@ class GlobusIngest(BaseIngest):
         # write to db
 
         logger.info("ingest sumbmitted, so add the files/datasets to the tabs")
- 
 
-        with MigrationDB.get_session() as session:
+        DBsession = MigrationDB.get_session()
+        with DBsession() as session:
             # last_query = session.query(Query).order_by(Query.id.desc()).first()
             last_query = current_query
 
@@ -129,7 +139,7 @@ class GlobusIngest(BaseIngest):
             for doc in docs:
                 if metatype == "files":
 
-                    if 'url' in doc:
+                    if "url" in doc:
                         urls = ",".join(doc.get("url"))
                     else:
                         urls = "NoURL"
@@ -138,11 +148,7 @@ class GlobusIngest(BaseIngest):
                         source_index=last_query.index_id,
                         target_index=str(self.end_point),
                         files_id=doc.get("id"),
-                        size=(
-                            doc.get("size")
-                            if "size" in doc
-                            else -1
-                        ),
+                        size=(doc.get("size") if "size" in doc else -1),
                         uri=urls,
                         success=-9 if "skip_ingest" in doc else 0,
                     )
@@ -156,7 +162,7 @@ class GlobusIngest(BaseIngest):
                         source_index=last_query.index_id,
                         target_index=str(self.end_point),
                         datasets_id=doc.get("id"),
-                        #uri=",".join(doc.get("url")),
+                        # uri=",".join(doc.get("url")),
                         success=-9 if "skip_ingest" in doc else 0,
                     )
                     session.add(datasets_obj)
@@ -166,8 +172,8 @@ class GlobusIngest(BaseIngest):
                 task_id = self._response_data.get("task_id")
                 ingest_response = json.dumps(self._response_data)
             else:
-                task_id="skip"
-                ingest_response="skip"
+                task_id = "skip"
+                ingest_response = "skip"
 
             ingest_obj = Ingest(
                 n_ingested=len(docs),
@@ -201,7 +207,7 @@ def generate_gmeta_list(
             doc["skip_ingest"] = True
             all_entries.append(doc)
             continue
-        
+
         gmeta_dict = {
             "id": metatype[:-1],
             "subject": converted_doc.get("id"),

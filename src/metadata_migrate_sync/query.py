@@ -41,27 +41,29 @@ class SolrQuery(BaseQuery):
     _review_list: list[Any]
 
     _current_query: Any | None = None
-   
-    #_numFound: int
+
+    # _numFound: int
 
     def get_cursormark(self, review: bool = False) -> None:
         """get the cursormark from the database file"""
-
 
         logger = provenance._instance.get_logger(__name__)
         if review:
             # get all the failed cases in the database, re-query and re-ingest
 
             self._veview = True
-            with MigrationDB.get_session() as session:
-                 failed_ingests = session.query(Ingest).filter_by(succeeded = 0).all()
+            DBsession = MigrationDB.get_session()
+            with DBsession() as session:
+                failed_ingests = session.query(Ingest).filter_by(succeeded=0).all()
 
-                 failed_querys = failed_ingests.query
+                failed_querys = failed_ingests.query
 
-                 self._review_list = []
-                 for ingest in failed_ingests:
-                     failed_query = session.query(Query).filter_by(pages = ingest.pages).first()
-                     self._review_list.append(failed_query)
+                self._review_list = []
+                for ingest in failed_ingests:
+                    failed_query = (
+                        session.query(Query).filter_by(pages=ingest.pages).first()
+                    )
+                    self._review_list.append(failed_query)
 
             # set the query
             if len(self._review_list) == 0:
@@ -71,10 +73,11 @@ class SolrQuery(BaseQuery):
                 self._current_query = self._review_list.pop()
                 self.query["cursorMark"] = self._current_query.cursorMark
 
-
         else:
             # determine the cursorMark
-            with MigrationDB.get_session() as session:
+
+            DBsession = MigrationDB.get_session()
+            with DBsession() as session:
 
                 last_query = session.query(Query).order_by(Query.id.desc()).first()
                 if last_query is None:  # new start
@@ -97,7 +100,7 @@ class SolrQuery(BaseQuery):
                             ing for ing in ingest_obj if ing.pages == last_query.pages
                         ]
 
-                        if len(filter_ingest) == 1: 
+                        if len(filter_ingest) == 1:
                             if filter_ingest[0].submitted == 0:
                                 self.query["cursorMark"] = last_query.cursorMark
                                 self._restart = True
@@ -107,16 +110,19 @@ class SolrQuery(BaseQuery):
                                 self.query["cursorMark"] = last_query.cursorMark_next
                                 self._restart = False
 
-                                logger.info("The query is restart in the next cursormark")
+                                logger.info(
+                                    "The query is restart in the next cursormark"
+                                )
                         else:
                             self.query["cursorMark"] = last_query.cursorMark
                             self._restart = True
 
                             logger.info("The query should not happened")
 
-
     @staticmethod
-    def _make_request(url: str, params: dict[str, Any], is_test: bool = False) -> tuple[Any, Any, Any] | None | int:
+    def _make_request(
+        url: str, params: dict[str, Any], is_test: bool = False
+    ) -> tuple[Any, Any, Any] | None | int:
         """
         Make an HTTP GET request with retry logic.
 
@@ -133,7 +139,7 @@ class SolrQuery(BaseQuery):
             total=3,
             backoff_factor=0.5,
             status_forcelist=(429, 500, 502, 503, 504),
-            allowed_methods=["GET"]
+            allowed_methods=["GET"],
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         http = requests.Session()
@@ -161,7 +167,9 @@ class SolrQuery(BaseQuery):
             logger.error(f"Request failed at {url}: {e}")
             return None
 
-    def _process_response(self, response_json: dict[str, Any]) -> Generator[Any, None, None]:
+    def _process_response(
+        self, response_json: dict[str, Any]
+    ) -> Generator[Any, None, None]:
         """
         Process the JSON response and yield the results.
 
@@ -194,7 +202,6 @@ class SolrQuery(BaseQuery):
         # Continue processing the next page
         yield from self.run()
 
-
     def run(self) -> Generator[Any, None, None]:
         """
         Query solr index in a paginated manner.
@@ -205,14 +212,10 @@ class SolrQuery(BaseQuery):
 
         result = self._make_request(self.end_point, self.query)
 
-
         if result:
             response_json, response_time, response_url = result
-            self.prov_collect(response_url, response_time, response_json) 
+            self.prov_collect(response_url, response_time, response_json)
             yield from self._process_response(response_json)
-       
-
-
 
     def prov_collect(
         self, req_url: str, req_time: float, response: dict[Any, Any]
@@ -221,7 +224,8 @@ class SolrQuery(BaseQuery):
 
         self._numFound = response.get("response").get("numFound")
 
-        with MigrationDB.get_session() as session:
+        DBsession = MigrationDB.get_session()
+        with DBsession() as session:
 
             if self._review:
                 pass
@@ -251,7 +255,9 @@ class SolrQuery(BaseQuery):
                     query_str=req_url.split("?")[1],
                     query_type="solr",
                     query_time=req_time,
-                    date_range="[* To *]" if not self.query.get("fq") else self.query.get("fq"),
+                    date_range=(
+                        "[* To *]" if not self.query.get("fq") else self.query.get("fq")
+                    ),
                     numFound=response.get("response").get("numFound"),
                     n_datasets=(
                         0
@@ -283,12 +289,11 @@ class GlobusQuery(BaseQuery):
     def run(self):
 
         gc = GlobusClient()
-        cm = gc.get_client(name = "test")
+        cm = gc.get_client(name="test")
         sc = cm.search_client
         sq = cm.search_query
 
         sq.set_query("CMIP5")
-
 
         if self.ep_name == "test":
             _globus_index_id = cm.indexes[self.ep_name]
@@ -296,5 +301,5 @@ class GlobusQuery(BaseQuery):
             _globus_index_id = cm.indexes[self.project.value]
 
         r = sc.post_search(_globus_index_id, sq)
-        with open('data.json', 'w') as f:
+        with open("data.json", "w") as f:
             json.dump(r.data, f)

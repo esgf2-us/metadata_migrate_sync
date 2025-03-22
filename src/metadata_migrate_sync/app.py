@@ -10,6 +10,9 @@ from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.query import GlobusQuery
 from metadata_migrate_sync.globus import GlobusClient
 
+import sys
+
+sys.setrecursionlimit(10000)
 
 def combine_enums(*enums, name="CombinedEnum"):
     members = {}

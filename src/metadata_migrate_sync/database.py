@@ -153,8 +153,8 @@ class MigrationDB:
             logger.info("this is the only initalization in database")
 
             if insert_index:
-                DBsession = sessionmaker(bind=self._engine)
-                with DBsession() as session:
+                self.DBsession = sessionmaker(bind=self._engine)
+                with self.DBsession() as session:
 
                     if session.query(Index).count() > 0:
                         pass
@@ -190,5 +190,13 @@ class MigrationDB:
     @classmethod
     def get_session(cls):
 
-        DBsession = sessionmaker(bind = cls._instance._engine)
-        return DBsession()
+        return cls._instance.DBsession
+
+    @classmethod
+    def reinitdb(cls):
+        cls._instance._engine.dispose()
+
+        db_filename = provenance._instance.db_file
+        cls._instance._engine = create_engine(f"sqlite:///{db_filename}")
+        cls._instance.DBsession = sessionmaker(bind=cls._instance._engine)
+        

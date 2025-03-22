@@ -36,14 +36,14 @@ def metadata_migrate(
         client_name = "prod-migration"
     else:
         client_name = "test"
- 
+
     prov = provenance(
         task_name="migrate",
         source_index_id=SolrIndexes.indexes[source_epname].index_id,
         source_index_type=SolrIndexes.indexes[source_epname].index_type,
         source_index_name=source_epname,
         source_index_schema=SolrIndexes.indexes[source_epname].index_type,
-        ingest_index_id = GlobusClient.globus_clients[client_name].indexes[target_epname],
+        ingest_index_id=GlobusClient.globus_clients[client_name].indexes[target_epname],
         ingest_index_type="globus",
         ingest_index_name=target_epname,
         ingest_index_schema="ESGF1.5",
@@ -51,7 +51,7 @@ def metadata_migrate(
         prov_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.json",
         db_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.sqlite",
         type_query=metatype.capitalize(),
-        cmd_line=" ".join(sys.argv)
+        cmd_line=" ".join(sys.argv),
     )
 
     pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
@@ -94,7 +94,6 @@ def metadata_migrate(
 
     logger.info("finish the query setting")
 
-
     sq = SolrQuery(
         end_point=f"{prov.source_index_id}/{prov.source_index_type}/{metatype}/select",
         ep_type=prov.source_index_type,
@@ -116,7 +115,6 @@ def metadata_migrate(
     sq.get_cursormark(review=False)
     logger.info("find the cursormark at " + sq.query["cursorMark"])
 
-
     current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info("query-ingest start at " + current_timestr)
 
@@ -135,7 +133,7 @@ def metadata_migrate(
             if not pbar.total and hasattr(sq, "_numFound") and sq._numFound:
                 pbar.total = math.ceil(sq._numFound / 500.0)
 
-            if (len(page) == 0):
+            if len(page) == 0:
                 logger.info(f"no data in this page {n}. stop the ingestion")
                 break
 
@@ -148,9 +146,17 @@ def metadata_migrate(
             else:
                 ig._response_data = None
                 ig._submitted = True
-               
 
-            ig.prov_collect(new_page, review=False, current_query=sq._current_query, metatype=metatype)
+            ig.prov_collect(
+                new_page,
+                review=False,
+                current_query=sq._current_query,
+                metatype=metatype,
+            )
+
+            # -if n % 300 == 0:
+            # -    MigrationDB.reinitdb()
+            # -    logger.info(f"reinit database at {n}")
 
             if not production and (maxpage is not None):
                 if n > maxpage:
