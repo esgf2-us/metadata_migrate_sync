@@ -210,12 +210,36 @@ class SolrQuery(BaseQuery):
             Generator[Any, None, None]: The docs from each page.
         """
 
-        result = self._make_request(self.end_point, self.query)
+        while True:
+            result = self._make_request(self.end_point, self.query)
 
-        if result:
+            if not result:
+                break
+
             response_json, response_time, response_url = result
             self.prov_collect(response_url, response_time, response_json)
-            yield from self._process_response(response_json)
+
+            docs = response_json.get("response", {}).get("docs", [])
+            yield docs
+            #yield from self._process_response(response_json)
+
+            # Check if this is the last page
+            if self.query["cursorMark"] == response_json.get("nextCursorMark"):
+                logger.info("Reached the last page.")
+                break
+
+
+            # Get the next page in the review mode
+            if self._review:
+                if not self._review_list:
+                    logger.info("No more pages to review.")
+                    break
+                self._review_page, self._review_cursor = self._review_list.pop()
+                self.query["cursorMark"] = self._review_cursor
+            else:
+                self.query["cursorMark"] = response_json.get("nextCursorMark")
+
+
 
     def prov_collect(
         self, req_url: str, req_time: float, response: dict[Any, Any]
@@ -293,7 +317,9 @@ class GlobusQuery(BaseQuery):
         sc = cm.search_client
         sq = cm.search_query
 
-        sq.set_query("CMIP5")
+        sq.set_query("*").set_limit(10).set_offset(0)
+
+        sq.add_filter("project", ["CMIP5"], type = "match_all")
 
         if self.ep_name == "test":
             _globus_index_id = cm.indexes[self.ep_name]
