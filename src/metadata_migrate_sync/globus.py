@@ -146,16 +146,37 @@ class GlobusClient:
             index_name = "prod-sync"
         elif name == "test":
             index_name = "test"
+        elif name == "all-prod":
+            index_name = "prod-all"
 
-        if cls.globus_clients[index_name].search_client == None:
-            logger.info(f"no search client and request for the index {index_name}")
+        if index_name == "prod-all":
+            client_prod_all = {}
+            
+            client_prod_all = dict(cls._client_prod_migration)
+            client_prod_all["indexes"] = dict(cls._client_prod_migration["indexes"])
+            client_prod_all["indexes"].update(cls._client_prod_sync["indexes"])
 
-            cls.globus_clients[index_name].search_client = get_authorized_search_client(
-                cls.globus_clients[index_name].app_client_id,
-                cls.globus_clients[index_name].token_name,
-            )
+            if client_prod_all["search_client"] is None:
 
-        logger.info(f"return the search client with the name {name}.") 
-                    
-        return cls.globus_clients[index_name]
+                client_prod_all["search_client"] = get_authorized_search_client(
+                    client_prod_all["app_client_id"],
+                    client_prod_all["token_name"],
+                )
+
+
+            return ClientModel(**client_prod_all)
+
+
+        else:
+            if cls.globus_clients[index_name].search_client == None:
+                logger.info(f"no search client and request for the index {index_name}")
+
+                cls.globus_clients[index_name].search_client = get_authorized_search_client(
+                    cls.globus_clients[index_name].app_client_id,
+                    cls.globus_clients[index_name].token_name,
+                )
+
+            logger.info(f"return the search client with the name {name}.") 
+                        
+            return cls.globus_clients[index_name]
 

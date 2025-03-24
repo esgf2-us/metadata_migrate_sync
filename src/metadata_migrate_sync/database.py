@@ -190,6 +190,10 @@ class MigrationDB:
     @classmethod
     def get_session(cls):
 
+        if not hasattr(cls._instance, "DBsession"):
+            cls._instance.DBsession = sessionmaker(bind=cls._instance._engine)
+           
+
         return cls._instance.DBsession
 
     @classmethod
