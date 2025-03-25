@@ -1,6 +1,6 @@
-from metadata_migrate_sync.globus import GlobusClient
-
 import json
+
+from metadata_migrate_sync.globus import GlobusClient
 
 
 def test_globus_index(snapshot):
@@ -20,12 +20,12 @@ def test_globus_search():
     sc = cm.search_client
     sq = cm.search_query
 
-    
+
     sq.add_filter("mip_era", ["CMIP6"]).add_filter("source_id", ["CESM2"])
 
     pages = sc.paginated.post_search("ea4595f4-7b71-4da7-a1f0-e3f5d8f7f062", sq)
     pages.limit = 10
 
     for page in pages:
-        assert 10 == len(page.data['gmeta'])
+        assert len(page.data['gmeta']) == 10
         break

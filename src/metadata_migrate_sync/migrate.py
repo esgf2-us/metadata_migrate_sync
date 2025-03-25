@@ -2,22 +2,23 @@
 migrating the solr indexes in ORNL/LLNL/ANL to globus indexes (public and staged ones)
 """
 
-from pydantic import validate_call
-from typing import Literal
-import pathlib
-from tqdm import tqdm
+import logging
 import math
+import pathlib
 import sys
 from datetime import datetime
-import logging
+from typing import Literal
 
-from metadata_migrate_sync.provenance import provenance
-from metadata_migrate_sync.solr import SolrIndexes
-from metadata_migrate_sync.globus import GlobusClient
+from pydantic import validate_call
+from tqdm import tqdm
+
 from metadata_migrate_sync.database import MigrationDB
-from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
-from metadata_migrate_sync.query import SolrQuery, params_search
+from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.ingest import GlobusIngest, generate_gmeta_list
+from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
+from metadata_migrate_sync.provenance import provenance
+from metadata_migrate_sync.query import SolrQuery, params_search
+from metadata_migrate_sync.solr import SolrIndexes
 
 
 @validate_call

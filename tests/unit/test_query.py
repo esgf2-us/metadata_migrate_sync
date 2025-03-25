@@ -1,12 +1,10 @@
+import pytest
 import requests
 import responses
-import pytest
-import urllib3
 
-from metadata_migrate_sync.query import SolrQuery, params_search
-from metadata_migrate_sync.project import ProjectReadOnly
 from metadata_migrate_sync.database import MigrationDB
-
+from metadata_migrate_sync.project import ProjectReadOnly
+from metadata_migrate_sync.query import SolrQuery, params_search
 
 cmip5_cusormark_list_row10_idasc_ornl = [
 'AoE/b0NNSVA2LkFlckNoZW1NSVAuQkNDLkJDQy1FU00xLnNzcDM3MC5yMWkxcDFmMS5BbW9uLnBzLmduLnYyMDE5MDYyNC5wc19BbW9uX0JDQy1FU00xX3NzcDM3MF9yMWkxcDFmMV9nbl8yMDE1MDEtMjA1NTEyLm5jfGVzZ2YtZGF0YTA0LmRpYXNqcC5uZXQ=',
@@ -39,13 +37,13 @@ e3smsuppl_cursormark_list_row10_idasc_ornl = [
 def test_query_cursormark():
     if "CMIP5" in ProjectReadOnly._value2member_map_:
         params_search = {
-              "q": "project:CMIP6", 
+              "q": "project:CMIP6",
               "sort": "id asc",
-              "limit": 10, 
+              "limit": 10,
               "cursorMark": "*",
               "wt": "json",
         }
-        
+
         index_url = "http://127.0.0.1:8983/solr/files/select"
         mark_list = []
         for req in range(0, 10):
@@ -55,16 +53,16 @@ def test_query_cursormark():
                 res_json = response.json()
                 mark_list.append(res_json.get("nextCursorMark"))
                 params_search["cursorMark"] = res_json.get("nextCursorMark")
-    
+
         assert mark_list == cmip5_cusormark_list_row10_idasc_ornl
 
 
 def test_query():
 
     params_search = {
-          "q": "project:CMIP3", 
+          "q": "project:CMIP3",
           "sort": "id asc",
-          "limit": 2, 
+          "limit": 2,
           "cursorMark": "*",
           "wt": "json",
     }
@@ -78,17 +76,17 @@ def test_query():
     )
 
     mdb = MigrationDB("test.sqlite", True)
-    
+
     n = 0
     for docs in sq.run():
-    
+
          n = n + 1
          for doc in docs:
             assert 'id' in doc
-    
+
          if n > 0:
             break
-    
+
 
 @responses.activate
 def test_query_retry_on_server_error():

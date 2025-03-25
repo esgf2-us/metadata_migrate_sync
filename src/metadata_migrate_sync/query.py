@@ -1,20 +1,21 @@
 """query for solr and globus both"""
 
-import requests
-from requests.adapters import HTTPAdapter
-from requests.exceptions import RequestException, HTTPError, ConnectionError, RetryError
-from urllib3 import Retry
-from uuid import UUID
-from pydantic import BaseModel
-from typing import Literal, Any, Generator
-import sys
 import json
+import sys
+from collections.abc import Generator
+from typing import Any, Literal
+from uuid import UUID
 
-from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
-from metadata_migrate_sync.database import MigrationDB, Index, Query, Ingest
-from metadata_migrate_sync.provenance import provenance
+import requests
+from pydantic import BaseModel
+from requests.adapters import HTTPAdapter
+from requests.exceptions import ConnectionError, RequestException, RetryError
+from urllib3 import Retry
 
+from metadata_migrate_sync.database import Index, Ingest, MigrationDB, Query
 from metadata_migrate_sync.globus import GlobusClient
+from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
+from metadata_migrate_sync.provenance import provenance
 
 params_search = {
     "sort": "id asc",
@@ -32,7 +33,7 @@ class BaseQuery(BaseModel):
 
 
 class SolrQuery(BaseQuery):
-    """query solr index"""
+    """query solr index."""
 
     query: dict[str, Any]
 
@@ -45,8 +46,7 @@ class SolrQuery(BaseQuery):
     # _numFound: int
 
     def get_cursormark(self, review: bool = False) -> None:
-        """get the cursormark from the database file"""
-
+        """Get the cursormark from the database file."""
         logger = provenance._instance.get_logger(__name__)
         if review:
             # get all the failed cases in the database, re-query and re-ingest
@@ -123,8 +123,7 @@ class SolrQuery(BaseQuery):
     def _make_request(
         url: str, params: dict[str, Any], is_test: bool = False
     ) -> tuple[Any, Any, Any] | None | int:
-        """
-        Make an HTTP GET request with retry logic.
+        """Make an HTTP GET request with retry logic.
 
         Args:
             url (str): The URL to make the request to.
@@ -132,6 +131,7 @@ class SolrQuery(BaseQuery):
 
         Returns:
             dict[str, Any] | None: The JSON response if successful, None otherwise.
+
         """
         logger = provenance.get_logger(__name__)
 
@@ -170,14 +170,14 @@ class SolrQuery(BaseQuery):
     def _process_response(
         self, response_json: dict[str, Any]
     ) -> Generator[Any, None, None]:
-        """
-        Process the JSON response and yield the results.
+        """Process the JSON response and yield the results.
 
         Args:
             response_json (dict[str, Any]): The JSON response from the API.
 
         Yields:
             Generator[Any, None, None]: The documents from the response.
+
         """
         logger = provenance.get_logger(__name__)
 
@@ -203,12 +203,13 @@ class SolrQuery(BaseQuery):
         yield from self.run()
 
     def run(self) -> Generator[Any, None, None]:
-        """
-        Query solr index in a paginated manner.
+        """Query solr index in a paginated manner.
 
         Yields:
             Generator[Any, None, None]: The docs from each page.
+
         """
+        logger = provenance.get_logger(__name__)
 
         while True:
             result = self._make_request(self.end_point, self.query)
@@ -244,8 +245,7 @@ class SolrQuery(BaseQuery):
     def prov_collect(
         self, req_url: str, req_time: float, response: dict[Any, Any]
     ) -> None:
-        """collect prov and db"""
-
+        """Collect prov and db"""
         self._numFound = response.get("response").get("numFound")
 
         DBsession = MigrationDB.get_session()
@@ -293,7 +293,7 @@ class SolrQuery(BaseQuery):
                         if "solr/datasets" in self.end_point
                         else len(response.get("response").get("docs"))
                     ),
-                    pages=prepage.pages + 1 if prepage != None else 1,
+                    pages=prepage.pages + 1 if prepage is not None else 1,
                     rows=self.query.get("rows"),
                     cursorMark=self.query.get("cursorMark"),
                     cursorMark_next=response.get("nextCursorMark"),
@@ -308,7 +308,7 @@ class SolrQuery(BaseQuery):
 
 
 class GlobusQuery(BaseQuery):
-    """query globus index"""
+    """query globus index."""
 
     def run(self):
 

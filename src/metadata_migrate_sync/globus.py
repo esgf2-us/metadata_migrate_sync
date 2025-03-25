@@ -1,15 +1,17 @@
-from globus_sdk.tokenstorage import SimpleJSONFileAdapter
+import pathlib
+from typing import Any
+from uuid import UUID
+
 from globus_sdk import (
-    SearchClient,
-    SearchQuery,
     NativeAppAuthClient,
     RefreshTokenAuthorizer,
+    SearchClient,
+    SearchQuery,
 )
-import pathlib
+from globus_sdk.tokenstorage import SimpleJSONFileAdapter
 from pydantic import BaseModel, ConfigDict
-from uuid import UUID
-from typing import Any
-from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
+
+from metadata_migrate_sync.project import ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 
 
@@ -18,7 +20,6 @@ def get_authorized_search_client(
     app_client_id: UUID | str, token_name: str = "token.json"
 ) -> SearchClient:
     """Return a transfer client authorized to make transfers."""
-
     config_path = pathlib.Path.home() / ".ssh"
     config_path.mkdir(parents=True, exist_ok=True)
     token_adapter = SimpleJSONFileAdapter(config_path / token_name)
@@ -76,10 +77,9 @@ class ClientModel(BaseModel):
 
 
 class GlobusClient:
-    """
-    a class to hold ESGF1.5 indexes and methods
-        indexes are from https://github.com/esgf2-us/esgf-1.5-design/blob/main/indexes.md
-        commit: 8630c26
+    """a class to hold ESGF1.5 indexes and methods
+    indexes are from https://github.com/esgf2-us/esgf-1.5-design/blob/main/indexes.md
+    commit: 8630c26
     """
 
     globus_clients: dict[str, ClientModel] = {}
@@ -151,7 +151,7 @@ class GlobusClient:
 
         if index_name == "prod-all":
             client_prod_all = {}
-            
+
             client_prod_all = dict(cls._client_prod_migration)
             client_prod_all["indexes"] = dict(cls._client_prod_migration["indexes"])
             client_prod_all["indexes"].update(cls._client_prod_sync["indexes"])
@@ -176,7 +176,7 @@ class GlobusClient:
                     cls.globus_clients[index_name].token_name,
                 )
 
-            logger.info(f"return the search client with the name {name}.") 
-                        
+            logger.info(f"return the search client with the name {name}.")
+
             return cls.globus_clients[index_name]
 

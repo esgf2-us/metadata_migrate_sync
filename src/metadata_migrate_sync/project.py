@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 # change.md #3a78b9f
 # The index will only contain metadata for the
 # CMIP3, CMIP5, CMIP6, CREATE-IP, DRCDP, E3SM, E3SM-supplement,
@@ -29,6 +28,6 @@ class ProjectReadWrite(str, Enum):
 
     CMIP6PLUS = "CMIP6Plus"
     DRCDP = "DRCDP"
-    E3SM = "E3SM"
+    E3SM = "e3sm"
     INPUT4MIPS = "input4MIPs"
     OBS4MIPS = "obs4MIPs"

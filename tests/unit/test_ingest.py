@@ -1,13 +1,12 @@
-import pytest
 import json
 
-from metadata_migrate_sync.ingest import GlobusIngest, generate_gmeta_list
+import pytest
 
+from metadata_migrate_sync.database import Files, Ingest, MigrationDB, Query
 from metadata_migrate_sync.globus import GlobusClient
-
+from metadata_migrate_sync.ingest import GlobusIngest, generate_gmeta_list
 from metadata_migrate_sync.project import ProjectReadOnly
 
-from metadata_migrate_sync.database import MigrationDB, Ingest, Query, Datasets, Files
 
 @pytest.fixture
 def solr_dataset(datadir, request):
@@ -79,27 +78,27 @@ def test_ingest_submitted(solr_dataset):
 
 @pytest.fixture
 def query_dummy():
-    
+
     query = Query(
-        project = "CMIP5", 
-        project_type = "readonly", 
+        project = "CMIP5",
+        project_type = "readonly",
 
-        index_id = "http://127.0.0.1:8983", 
+        index_id = "http://127.0.0.1:8983",
 
-        query_str = "sort=id+asc&rows=2&cursorMark=%2A&wt=json&q=project%3ACMIP3", 
+        query_str = "sort=id+asc&rows=2&cursorMark=%2A&wt=json&q=project%3ACMIP3",
 
-        query_type = "solr", 
-        query_time = 1.09, 
-        date_range = '[* TO *]', 
-        numFound = 88888888, 
-        n_datasets = 0, 
-        n_files = 8888888, 
+        query_type = "solr",
+        query_time = 1.09,
+        date_range = '[* TO *]',
+        numFound = 88888888,
+        n_datasets = 0,
+        n_files = 8888888,
 
-        pages = 1, 
-        rows = 2, 
-        cursorMark = "*", 
-        cursorMark_next = "xxx", 
-        n_failed = 0, 
+        pages = 1,
+        rows = 2,
+        cursorMark = "*",
+        cursorMark_next = "xxx",
+        n_failed = 0,
     )
 
 
@@ -109,14 +108,14 @@ def query_dummy():
 def test_ingest_prov_collect(query_dummy, solr_file, datadir):
 
 
-    ingest_ver = {'n_ingested': 1, 'n_datasets': 0, 'n_files': 1, 'index_id': '52eff156-6141-4fde-9efe-c08c92f3a706', 
-        'task_id': 'a04ae23d-6fd4-42af-b52c-d54577db97dc', 
-        'ingest_response': '{"acknowledged": true, "task_id": "a04ae23d-6fd4-42af-b52c-d54577db97dc", "success": true, "num_documents_ingested": 0}', 
+    ingest_ver = {'n_ingested': 1, 'n_datasets': 0, 'n_files': 1, 'index_id': '52eff156-6141-4fde-9efe-c08c92f3a706',
+        'task_id': 'a04ae23d-6fd4-42af-b52c-d54577db97dc',
+        'ingest_response': '{"acknowledged": true, "task_id": "a04ae23d-6fd4-42af-b52c-d54577db97dc", "success": true, "num_documents_ingested": 0}',
         'submitted': 1}
 
-    files_ver = {'source_index': 'http://127.0.0.1:8983', 'target_index': '52eff156-6141-4fde-9efe-c08c92f3a706', 'files_id': 
-        'cmip5.output.CCCma.CanAM4.amip.3hr.atmos.r3i1p1.v20130331.sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|crd-esgf-drc.ec.gc.ca', 
-        'uri': 'http://crd-esgf-drc.ec.gc.ca/thredds/fileServer/esg_dataroot/AR5/CMIP5/output/CCCma/CanAM4/amip/3hr/atmos/sfcWind/r3i1p1/sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|application/netcdf|HTTPServer,gsiftp://crd-esgf-drc.ec.gc.ca:2811//esg_dataroot/AR5/CMIP5/output/CCCma/CanAM4/amip/3hr/atmos/sfcWind/r3i1p1/sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|application/gridftp|GridFTP,http://crd-esgf-drc.ec.gc.ca/thredds/dodsC/esg_dataroot/AR5/CMIP5/output/CCCma/CanAM4/amip/3hr/atmos/sfcWind/r3i1p1/sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc.html|application/opendap-html|OPENDAP', 
+    files_ver = {'source_index': 'http://127.0.0.1:8983', 'target_index': '52eff156-6141-4fde-9efe-c08c92f3a706', 'files_id':
+        'cmip5.output.CCCma.CanAM4.amip.3hr.atmos.r3i1p1.v20130331.sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|crd-esgf-drc.ec.gc.ca',
+        'uri': 'http://crd-esgf-drc.ec.gc.ca/thredds/fileServer/esg_dataroot/AR5/CMIP5/output/CCCma/CanAM4/amip/3hr/atmos/sfcWind/r3i1p1/sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|application/netcdf|HTTPServer,gsiftp://crd-esgf-drc.ec.gc.ca:2811//esg_dataroot/AR5/CMIP5/output/CCCma/CanAM4/amip/3hr/atmos/sfcWind/r3i1p1/sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc|application/gridftp|GridFTP,http://crd-esgf-drc.ec.gc.ca/thredds/dodsC/esg_dataroot/AR5/CMIP5/output/CCCma/CanAM4/amip/3hr/atmos/sfcWind/r3i1p1/sfcWind_cf3hr_CanAM4_amip_r3i1p1_197901010300-201001010000.nc.html|application/opendap-html|OPENDAP',
          'success': 0}
 
 
@@ -133,7 +132,7 @@ def test_ingest_prov_collect(query_dummy, solr_file, datadir):
         ep_name="test",
         project=ProjectReadOnly.CMIP5,
     )
-    
+
     gi._submitted = True
     gi._response_data = {
         "acknowledged": True,
@@ -163,7 +162,7 @@ def test_ingest_prov_collect(query_dummy, solr_file, datadir):
         files_in_db_dict.pop('_sa_instance_state', None)
         files_in_db_dict.pop('pages', None)
         files_in_db_dict.pop('id', None)
-        
+
         print (files_in_db_dict)
         print (files_ver)
 

@@ -1,8 +1,8 @@
-from metadata_migrate_sync.esgf_index_schema.schema_solr import FileDocs, DatasetDocs
-
 from typing import Any, Literal
 
+from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, FileDocs
 from metadata_migrate_sync.provenance import provenance
+
 
 def convert_to_esgf_1_5(solr_doc: FileDocs | DatasetDocs, metatype: Literal["datasets", "files"]) -> dict[Any, Any] | None:
 
@@ -21,10 +21,10 @@ def convert_to_esgf_1_5(solr_doc: FileDocs | DatasetDocs, metatype: Literal["dat
         if "data_node" in esgf_doc:
             data_node = esgf_doc["data_node"]
 
-            if ".llnl.gov" in data_node or ".anl.gov" in data_node or "esgf-node.ornl.gov" == data_node:
-                return esgf_doc 
+            if ".llnl.gov" in data_node or ".anl.gov" in data_node or data_node == "esgf-node.ornl.gov":
+                return esgf_doc
             else:
-                return None 
+                return None
 
     # for e3sm
     if provenance._instance.source_index_name == "llnl":

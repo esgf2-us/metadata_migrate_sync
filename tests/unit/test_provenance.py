@@ -1,8 +1,9 @@
-from metadata_migrate_sync.provenance import provenance
-
 import logging
-import pytest
 import os
+
+import pytest
+
+from metadata_migrate_sync.provenance import provenance
 
 
 @pytest.fixture

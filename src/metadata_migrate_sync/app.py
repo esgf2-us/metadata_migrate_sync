@@ -1,19 +1,13 @@
 #!/usr/bin/env python
-import typer
-from typer import Context
-from uuid import UUID
+import sys
 from enum import Enum
-from typing import Literal, Annotated
-from pydantic import AnyUrl, HttpUrl, AnyHttpUrl
 
+import typer
+
+from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.query import GlobusQuery
-from metadata_migrate_sync.globus import GlobusClient
-
-from typing import Any
-
-import sys
 
 sys.setrecursionlimit(10000)
 
@@ -98,7 +92,8 @@ def check_index(
     save: bool = typer.Option(False, help="save to index.json"),
 ) -> None:
 
-    import json, pathlib
+    import json
+    import pathlib
 
     gc = GlobusClient()
     cm = gc.get_client(name = globus_ep)
@@ -113,7 +108,7 @@ def check_index(
             r = sc.get_index(index_id)
             print (r.data)
             tab_index.append(r.data)
-            
+
     else:
         if project in ProjectReadOnly:
             index_id = cm.indexes.get("public")
@@ -178,7 +173,7 @@ def query_globus(
         ep_name="test",
         project=ProjectReadOnly.CMIP6,
     )
-    # project is not used 
+    # project is not used
 
     gq.run()
 

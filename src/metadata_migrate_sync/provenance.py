@@ -1,25 +1,21 @@
-from pydantic import BaseModel, AnyUrl
-from typing import Literal, ClassVar
-from datetime import datetime
-import pathlib
-import os
-import sys
-import platform
-
-import uuid
 import logging
 import logging.config
+import os
+import pathlib
+import platform
+import sys
+from importlib.metadata import distributions
+from typing import Literal
 from uuid import UUID
 
-from importlib.metadata import distributions
+from pydantic import AnyUrl, BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
 
-
 class SingletonMeta(ModelMetaclass):
+    """Metaclass to enforce singleton behavior while preserving Pydantic's functionality.
     """
-    Metaclass to enforce singleton behavior while preserving Pydantic's functionality.
-    """
+
     _instance = None
 
     def __call__(cls, *args, **kwargs):
@@ -29,11 +25,9 @@ class SingletonMeta(ModelMetaclass):
 
 
 class provenance(BaseModel, metaclass=SingletonMeta):
-    """
-    provenance class for the meta data ingest and sync
+    """provenance class for the meta data ingest and sync
     it is a singleton instance
     """
-
 
     #_log_file: ClassVar[str] = "test_pov.log"
 

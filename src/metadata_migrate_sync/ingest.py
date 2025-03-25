@@ -1,19 +1,19 @@
+import json
+from datetime import datetime
+from typing import Any, Literal
+from uuid import UUID
+
+from globus_sdk import SearchClient
 from pydantic import (
     BaseModel,
     field_validator,
     validate_call,
 )
-from typing import Any, Literal
-from uuid import UUID
-import json
-from globus_sdk import SearchClient, GlobusError
-from datetime import datetime
 
-from metadata_migrate_sync.globus import GlobusClient
-from metadata_migrate_sync.database import MigrationDB, Query, Ingest, Datasets, Files
-from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
+from metadata_migrate_sync.database import Datasets, Files, Ingest, MigrationDB
 from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, FileDocs
-
+from metadata_migrate_sync.globus import GlobusClient
+from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 
 
@@ -195,8 +195,7 @@ class GlobusIngest(BaseIngest):
 def generate_gmeta_list(
     docs: list[dict[str, Any]], metatype: Literal["files", "datasets"]
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """generate gmeta list for ingestion"""
-
+    """Generate gmeta list for ingestion"""
     from metadata_migrate_sync.convert import convert_to_esgf_1_5
 
     gmeta_entries = []

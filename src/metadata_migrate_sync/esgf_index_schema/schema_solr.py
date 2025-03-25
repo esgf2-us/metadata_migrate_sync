@@ -1,8 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict, Discriminator, Tag
-from pathlib import Path
-from typing import Literal, Any
 from datetime import datetime
-from typing_extensions import Annotated
+from pathlib import Path
+from typing import Annotated, Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 
 from .schema_cmipcv import CMIP5CV, CMIP6CV
 

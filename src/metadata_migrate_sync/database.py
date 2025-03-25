@@ -1,31 +1,26 @@
+"""Sqlite database for index migrationa and sync
 """
-Sqlite database for index migrationa and sync
-"""
+
+from datetime import datetime
 
 from sqlalchemy import (
-    create_engine,
-    Engine,
     Column,
-    Integer,
-    String,
-    Numeric,
-    ForeignKey,
     DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    create_engine,
 )
 from sqlalchemy.orm import (
-    Session,
-    sessionmaker,
-    relationship,
     DeclarativeBase,
+    relationship,
+    sessionmaker,
 )
-from datetime import datetime
-from pydantic import BaseModel
-from typing import Literal
 
 from metadata_migrate_sync.globus import GlobusClient
-from metadata_migrate_sync.solr import SolrIndexes
-
 from metadata_migrate_sync.provenance import provenance
+from metadata_migrate_sync.solr import SolrIndexes
 
 
 # Create a base class for models
@@ -146,7 +141,7 @@ class MigrationDB:
             self._DATABASE_URL = f"sqlite:///{db_filename}"
             self._engine = create_engine(self._DATABASE_URL, echo=False)
             Base.metadata.create_all(self._engine)
-              
+
             logger = provenance.get_logger(__name__)
 
 
@@ -192,7 +187,7 @@ class MigrationDB:
 
         if not hasattr(cls._instance, "DBsession"):
             cls._instance.DBsession = sessionmaker(bind=cls._instance._engine)
-           
+
 
         return cls._instance.DBsession
 
@@ -203,4 +198,4 @@ class MigrationDB:
         db_filename = provenance._instance.db_file
         cls._instance._engine = create_engine(f"sqlite:///{db_filename}")
         cls._instance.DBsession = sessionmaker(bind=cls._instance._engine)
-        
+

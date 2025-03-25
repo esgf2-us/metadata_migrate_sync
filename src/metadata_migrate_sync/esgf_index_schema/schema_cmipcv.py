@@ -1,14 +1,12 @@
-"""
-The Controlled Vocabularies from CMIP5 and CMIP6
+"""The Controlled Vocabularies from CMIP5 and CMIP6
 They are all optional and indexed
 """
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
 
 
 class CMIP5CV(BaseModel):
-    """
-    CVs and keywords used by CMIP5
+    """CVs and keywords used by CMIP5
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -37,8 +35,7 @@ class CMIP5CV(BaseModel):
     tracking_id: list[str] | None = None
 
 class CMIP6CV(BaseModel):
-    """
-    Cvs and keywords from CMIP6
+    """Cvs and keywords from CMIP6
     all fields are indexed(searchable and sortable)
     """
 
