@@ -20,6 +20,7 @@ from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.query import SolrQuery, params_search
 from metadata_migrate_sync.solr import SolrIndexes
 
+import json
 
 @validate_call
 def metadata_migrate(
@@ -33,10 +34,15 @@ def metadata_migrate(
 
     # setup the provenance
 
-    if target_epname != "test" and production:
+    if target_epname == "public" and production:
         client_name = "prod-migration"
+        index_name = target_epname
+    elif target_epname == "stage" and production:
+        client_name = "prod-sync"
+        index_name = project.value
     else:
         client_name = "test"
+        index_name = "test"
 
     prov = provenance(
         task_name="migrate",
@@ -44,7 +50,7 @@ def metadata_migrate(
         source_index_type=SolrIndexes.indexes[source_epname].index_type,
         source_index_name=source_epname,
         source_index_schema=SolrIndexes.indexes[source_epname].index_type,
-        ingest_index_id=GlobusClient.globus_clients[client_name].indexes[target_epname],
+        ingest_index_id=GlobusClient.globus_clients[client_name].indexes[index_name],
         ingest_index_type="globus",
         ingest_index_name=target_epname,
         ingest_index_schema="ESGF1.5",
@@ -132,7 +138,7 @@ def metadata_migrate(
 
         for page in pbar:
             if not pbar.total and hasattr(sq, "_numFound") and sq._numFound:
-                pbar.total = math.ceil(sq._numFound / 500.0)
+                pbar.total = math.ceil(sq._numFound / search_dict["rows"])
 
             if len(page) == 0:
                 logger.info(f"no data in this page {n}. stop the ingestion")

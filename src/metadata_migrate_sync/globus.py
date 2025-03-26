@@ -101,7 +101,8 @@ class GlobusClient:
         "search_client": None,
         "search_query": SearchQuery(""),
         "indexes": {
-            "public": "c0173b0c-5587-437a-a912-ef09b6d14e9c",
+            "public_old": "c0173b0c-5587-437a-a912-ef09b6d14e9c",
+            "public": "a8ef4320-9e5a-4793-837b-c45161ca1845",
         },
     }
 

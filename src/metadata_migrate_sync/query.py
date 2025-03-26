@@ -299,6 +299,7 @@ class SolrQuery(BaseQuery):
                     cursorMark_next=response.get("nextCursorMark"),
                     n_failed=0,
                     index=ind,
+                    doc_size = len(json.dumps(response.get("response").get("docs"))),
                 )
 
                 session.add(query_obj)

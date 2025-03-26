@@ -326,7 +326,6 @@ dependencies = [
     { name = "globus-sdk" },
     { name = "pydantic" },
     { name = "requests" },
-    { name = "ruff" },
     { name = "sqlalchemy" },
     { name = "tqdm" },
     { name = "typer" },
@@ -340,6 +339,7 @@ dev = [
     { name = "pytest-datadir" },
     { name = "pytest-snapshot" },
     { name = "responses" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
@@ -347,7 +347,6 @@ requires-dist = [
     { name = "globus-sdk", specifier = ">=3.51.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "requests", specifier = ">=2.32.3" },
-    { name = "ruff", specifier = ">=0.11.2" },
     { name = "sqlalchemy", specifier = ">=2.0.39" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "typer", specifier = ">=0.15.2" },
@@ -361,6 +360,7 @@ dev = [
     { name = "pytest-datadir", specifier = ">=1.6.1" },
     { name = "pytest-snapshot", specifier = ">=0.9.0" },
     { name = "responses", specifier = ">=0.25.7" },
+    { name = "ruff", specifier = ">=0.11.2" },
 ]
 
 [[package]]

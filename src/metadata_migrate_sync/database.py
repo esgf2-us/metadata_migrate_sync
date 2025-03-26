@@ -70,6 +70,7 @@ class Query(Base):
     cursorMark = Column(String)
     cursorMark_next = Column(String)
     n_failed = Column(Integer, default=0)
+    doc_size = Column(Integer)
 
 
 # success and n_failed are updated in the check code
