@@ -6,7 +6,7 @@ from metadata_migrate_sync.database import MigrationDB
 from metadata_migrate_sync.project import ProjectReadOnly
 from metadata_migrate_sync.query import SolrQuery, params_search
 
-cmip5_cusormark_list_row10_idasc_ornl = [
+cmip6_cusormark_list_row10_idasc_ornl = [
 'AoE/b0NNSVA2LkFlckNoZW1NSVAuQkNDLkJDQy1FU00xLnNzcDM3MC5yMWkxcDFmMS5BbW9uLnBzLmduLnYyMDE5MDYyNC5wc19BbW9uX0JDQy1FU00xX3NzcDM3MF9yMWkxcDFmMV9nbl8yMDE1MDEtMjA1NTEyLm5jfGVzZ2YtZGF0YTA0LmRpYXNqcC5uZXQ=',
 'AoE/c0NNSVA2LkFlckNoZW1NSVAuQkNDLkJDQy1FU00xLnNzcDM3MC5yMWkxcDFmMS5BbW9uLnJzdXMuZ24udjIwMTkwNjI0LnJzdXNfQW1vbl9CQ0MtRVNNMV9zc3AzNzBfcjFpMXAxZjFfZ25fMjAxNTAxLTIwNTUxMi5uY3xlc2dmLWRhdGEwNC5kaWFzanAubmV0',
 'AoE/b0NNSVA2LkFlckNoZW1NSVAuQkNDLkJDQy1FU00xLnNzcDM3MC5yMWkxcDFmMS5BbW9uLnRzLmduLnYyMDE5MDYyNC50c19BbW9uX0JDQy1FU00xX3NzcDM3MF9yMWkxcDFmMV9nbl8yMDE1MDEtMjA1NTEyLm5jfGVzZ2YtZGF0YTA0LmRpYXNqcC5uZXQ=',
@@ -35,7 +35,7 @@ e3smsuppl_cursormark_list_row10_idasc_ornl = [
 
 
 def test_query_cursormark():
-    if "CMIP5" in ProjectReadOnly._value2member_map_:
+    if "CMIP6" in ProjectReadOnly._value2member_map_:
         params_search = {
               "q": "project:CMIP6",
               "sort": "id asc",
@@ -55,6 +55,51 @@ def test_query_cursormark():
                 params_search["cursorMark"] = res_json.get("nextCursorMark")
 
         assert mark_list == cmip5_cusormark_list_row10_idasc_ornl
+
+def test_query_cursormark_different_rows():
+    if "CMIP6" in ProjectReadOnly._value2member_map_:
+        params_search = {
+              "q": "project:CMIP6",
+              "sort": "id asc",
+              "rows": 5,
+              "cursorMark": "*",
+              "wt": "json",
+              "fq": "_timestamp:[* TO 2025-03-16T00:00:00Z]",
+        }
+
+        index_url = "http://127.0.0.1:8983/solr/files/select"
+
+        params_search["rows"] = 5
+        mark_list_5 = []
+        for req in range(0, 12):
+            response = requests.get(index_url, params=params_search)
+            if response.status_code == requests.codes.ok:
+                res_json = response.json()
+                mark_list_5.append(res_json.get("nextCursorMark"))
+                params_search["cursorMark"] = res_json.get("nextCursorMark")
+
+        params_search["rows"] = 10
+        params_search["cursorMark"] = "*"
+        mark_list_10 = []
+        for req in range(0, 6):
+            response = requests.get(index_url, params=params_search)
+            if response.status_code == requests.codes.ok:
+                res_json = response.json()
+                mark_list_10.append(res_json.get("nextCursorMark"))
+                params_search["cursorMark"] = res_json.get("nextCursorMark")
+
+        params_search["rows"] = 15
+        params_search["cursorMark"] = "*"
+        mark_list_15 = []
+        for req in range(0, 4):
+            response = requests.get(index_url, params=params_search)
+            if response.status_code == requests.codes.ok:
+                res_json = response.json()
+                mark_list_15.append(res_json.get("nextCursorMark"))
+                params_search["cursorMark"] = res_json.get("nextCursorMark")
+
+        assert mark_list_5[1::2] == mark_list_10[:]
+        assert mark_list_5[2::3] == mark_list_15[:]
 
 
 def test_query():

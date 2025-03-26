@@ -89,6 +89,14 @@ def metadata_migrate(
 
     if production:
         search_dict["rows"] = 500
+
+        if project.value == "CMIP6":
+            search_dict["rows"] = 1500
+
+        if project.value == "e3sm":
+            search_dict["rows"] = 200
+
+
         maxpage = None
         if target_epname == "test":
             logger.warning("production run generaly does not ingest to test index")

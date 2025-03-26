@@ -95,7 +95,8 @@ def check_ingest_tasks(*,
                         break
 
                 else:
-                    task_ids = session.query(Ingest.task_id).offset(0).limit(10).all()
+                    #task_ids = session.query(Ingest.task_id).offset(0).limit(10).all()
+                    task_ids = session.query(Ingest.task_id).order_by(Ingest.id.desc()).offset(0).limit(10).all()
 
                     for k, task in enumerate(task_ids):  # task is single-item tuple
 
