@@ -1,13 +1,14 @@
 #!/usr/bin/env python
+import datetime
 import sys
 from enum import Enum
 
 import typer
 
+from metadata_migrate_sync.check_ingest_tasks import check_ingest_tasks
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
-from metadata_migrate_sync.query import GlobusQuery
 
 sys.setrecursionlimit(10000)
 
@@ -126,8 +127,24 @@ def check_index(
         pathlib.Path("index.json").write_text(json.dumps(tab_index))
 
 @app.command()
-def sync():
-    pass
+def sync(
+    source_ep: str = typer.Argument(
+        help="source end point name", callback=validate_src_ep
+    ),
+    target_ep: str = typer.Argument(
+        help="target end point name", callback=validate_tgt_ep
+    ),
+    project: str = typer.Argument(help="project name", callback=validate_project),
+    prod: bool = typer.Option(help="production run", default=False),
+) -> None:
+
+    metadata_sync(
+        source_epname=source_ep,
+        target_epname=target_ep,
+        project=project,
+        production=prod,
+    )
+
 
 @app.command()
 def create_index():
@@ -139,45 +156,115 @@ def create_index():
 
     print (r)
 
-@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": False})
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def query_globus(
     ctx: typer.Context,
     globus_ep: str = typer.Argument(
         help="globus end point name", callback=validate_tgt_ep),
     project: str = typer.Argument(help="project name", callback=validate_project),
-    more_args: list[str] | None = typer.Option(None, help="more options")
+    orderby: str = typer.Option(help="sort the result by"),
+    limit: int = typer.Option(10, help="the limit of a page"),
+    timerange: str = typer.Option(help="time range in search")
 ):
 
 
+
+    if 'TO' not in timerange:
+        print ("please provide a validate time range datetime-datetime")
+        return
+
+
+    start_time = timerange.split('TO')[0]
+
+    t_start = datetime.datetime.fromisoformat(start_time)
+    start_iso = t_start.isoformat() + "Z"  # "2023-01-01T00:00:00Z"
+
+
+    end_time = timerange.split('TO')[1]
+    t_end = datetime.datetime.fromisoformat(end_time)
+
+    end_iso = t_end.isoformat() + "Z"     # "2023-12-31T00:00:00Z"
+
+    time_cond = {
+        "type": "range",
+        "field_name": "_timestamp",
+        "values": [{
+        "from": start_iso,  # Greater than or equal to start_date
+        "to": end_iso     # Less than or equal to end_date
+         }]
+    }
+
+    if "." not in orderby:
+        print ("please provide the correcit orderbu")
+        sys.exit()
+
+    order_field = orderby.split('.')[0]
+    order = orderby.split('.')[1]
+
     kwargs = {}
-    if more_args:
-        for arg in more_args:
+    if ctx.args:
+        for arg in ctx.args:
             typer.echo (arg)
-            if "=" in arg:
+            if "=" in arg and "--" in arg:
                 key, value = arg.split("=", 1)
                 kwargs[key] = value
             else:
                 typer.echo(f"Ignoring invalid argument: {arg}")
 
     # Handle kwargs
+    query = {"filters":[], "sort_field": order_field, "sort": order}
+    proj_cond = {"type": "match_all", "field_name": "project", "values": [project.value]}
+    query["filters"].append(proj_cond)
+
+    query["filters"].append(time_cond)
     if kwargs:
-        typer.echo("Additional options:")
+        typer.echo("Query filters:")
         for key, value in kwargs.items():
-            typer.echo(f"  {key}: {value}")
+            typer.echo(f"{key[2:]}: {value}")
+            filter_cond = {"type": "match_all", "field_name": key[2:], "values": [value]}
 
-    sys.exit()
+            if key[2:] == "project":
+                 query["filters"].remove(proj_cond)
+                 query["filters"].append(filter_cond)
 
-    gq = GlobusQuery(
-        end_point="52eff156-6141-4fde-9efe-c08c92f3a706",
-        ep_type="globus",
-        ep_name="test",
-        project=ProjectReadOnly.CMIP6,
-    )
-    # project is not used
+    query["limit"] = limit
 
-    gq.run()
+    #-gq = GlobusQuery(
+    #-    end_point="c0173b0c-5587-437a-a912-ef09b6d14e9c",
+    #-    ep_type="globus",
+    #-    ep_name="public_old",
+    #-    project=ProjectReadOnly.CMIP6,
+    #-    query=query,
+    #-    generator=False,
+    #-)
+    #-# project is not used
+    #-gq.run()
+
+        #-else:
+        #-sq.set_query("*").set_limit(page_size).set_offset(0)
+        #-r = sc.post_search(_globus_index_id, sq)
+
+
+        #-with open("data.json", "w") as f:
+        #-    json.dump(r.data, f)
+
+        #-for g in r.data.get("gmeta"):
+        #-    print (g["entries"][0]["content"]["_timestamp"])
 
     pass
+
+
+@app.command()
+def check_task(
+    task_id: str = typer.Option(None, help="the ingest task id"),
+    db_file: str = typer.Option(None, help="the ingest task id"),
+    update: bool = typer.Option(False, help="update the succeeded flag in the database"),
+):
+    check_ingest_tasks(
+        task_id = task_id,
+        db_file = db_file,
+        update = update,
+    )
 
 
 if __name__ == "__main__":

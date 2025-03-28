@@ -1,29 +1,20 @@
 """Check the status of ingest tasks
 """
 
-
-
 import pathlib
 from uuid import UUID
 
 from rich import print
+from rich.progress import Progress
 
-from metadata_migrate_sync.database import Query, Ingest, Datasets, Files, MigrationDB
+from metadata_migrate_sync.database import Ingest, MigrationDB
 from metadata_migrate_sync.globus import GlobusClient
-from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
+from metadata_migrate_sync.project import ProjectReadWrite
 
-
-
-def paginated_query(session, query, page_size=1000):
-    for page in query.yield_per(page_size):
-        yield page
 
 def check_ingest_tasks(*,
-    solr_index_name: str | None = None,
-    globus_index_name: str,
     task_id: str | None = None,
-    project: ProjectReadOnly | ProjectReadWrite | None = None,
-    meta_type: str | None,
+    db_file: pathlib.Path | str | None = None,
     update: bool = False,
 ) -> None:
     """Check the status of ingest tasks from the globus_index_name.
@@ -36,97 +27,101 @@ def check_ingest_tasks(*,
     """
     gc = GlobusClient()
 
-    cm = gc.get_client(name = globus_index_name)
+    target_index_name = "stage"
+    cm = gc.get_client(name = target_index_name)
 
     sc = cm.search_client
 
     if task_id is None:
-        if solr_index_name is None or project is None or meta_type is None:
-            print ("task ids can only from task_id or database")
+        if db_file is None:
+            print ("Please provide either task id or the migration database file")
             return None
 
-        file_path = pathlib.Path(
-            f"migration_{solr_index_name}_{globus_index_name}_{project.value}_{meta_type}.sqlite"
-        )
+        if isinstance(db_file, str):
+            file_path = pathlib.Path(db_file)
+        else:
+            file_path = db_file
+
         if file_path.exists():
-            mdb = MigrationDB(str(file_path)+"?mode=ro", False)
+
+            if update:
+                mdb = MigrationDB(str(file_path)+"?mode=ro", False)
+            else:
+                mdb = MigrationDB(str(file_path), False)
+
+            updated_freq = 500
+            page_size = 20
+
+            total_ingest = 0
+            total_success = 0
 
             DBsession = MigrationDB.get_session()
             with DBsession() as session:
 
                 if update:
-                    #-query = session.query(Ingest.task_id).order_by(Ingest.id)
-                    #-for item in paginated_query(session, query, 10):
-                    #-    #for doc in item:
-                    #-    print (item)
                     last_id = None
-                    page_size = 20
-                    while True:
-                        ingest = session.query(Ingest).order_by(Ingest.id)
-                        
-                        if last_id is not None:
-                            ingest = ingest.filter(Ingest.id > last_id)
-                        
-                        results = ingest.limit(page_size).all()
-                        
-                        if not results:
-                            break
-                        
-                        for item in results:
-                            if item.task_id != "skip":
-                                r = sc.get_task(item.task_id)
-                                print (item.task_id, r.data["state"])
+                    with Progress() as progress:
+                         total = session.query(Ingest).filter_by(succeeded=0).count()
+                         progress.add_task(description="Processing...", total=total)
 
-                                query = session.query(Query).filter_by(pages = item.pages).first()
+                         while True:
+                             ingest = session.query(Ingest).filter_by(succeeded=0).order_by(Ingest.id)
 
-                                files = session.query(Files).filter_by(pages = item.pages).all()
+                             if last_id is not None:
+                                 ingest = ingest.filter(Ingest.id > last_id)
 
-                                print (query.id, item.pages, item.succeeded)
+                             results = ingest.limit(page_size).all()
 
-                                for file in files:
-                                    print (file.pages, item.pages, 'files')
+                             if not results:
+                                 break
 
-                                #item.succeeded = 1
+                             for item in results:
+                                 if item.task_id != "skip":
+                                     r = sc.get_task(item.task_id)
+                                     if r.data["state"] == "SUCCESS":
+                                         total_success+=1
+                                         item.succeeded = 1
 
-                            last_id = item.id
-                        #XXXXX
+                                     total_ingest+=1
 
-                        #session.commit()
-                        break
+                                 last_id = item.id
+
+                             if total_ingest % updated_freq == 0:
+                                 session.commit()
 
                 else:
-                    #task_ids = session.query(Ingest.task_id).offset(0).limit(10).all()
-                    task_ids = session.query(Ingest.task_id).order_by(Ingest.id.desc()).offset(0).limit(10).all()
+                    task_ids = session.query(Ingest.task_id)\
+                        .order_by(Ingest.id.desc())\
+                        .offset(0).limit(10).all()
 
                     for k, task in enumerate(task_ids):  # task is single-item tuple
-
                         if task[0] != "skip":
                             r = sc.get_task(task[0])
                             print (r.data["task_id"], r.data["state"])
 
         else:
-
             print (f"{file_path} is not exist")
-            print ("please provide the valid options")
+            print ("please provide the data file path")
     else:
+
+        if db_file is not None:
+            print ("both task_id and db_file provided, will skip db_file")
         try:
             UUID(task_id)
             print (sc.get_task(task_id))
         except ValueError:
             print ("please provide validate task id")
-        return None
+    return None
 
 
 
 if __name__ == "__main__":
 
     check_ingest_tasks(
-        solr_index_name = "ornl",
-        globus_index_name = "test",
-        project = ProjectReadOnly.CMIP6,
+        solr_index_name = "llnl",
+        globus_index_name = "stage",
+        project = ProjectReadWrite.E3SM,
         meta_type = "files",
-        update = True,
+        update = False,
+        task_id = '142631c4-2b09-4b13-b343-cbc8d98e67c5',
     )
-
-
-

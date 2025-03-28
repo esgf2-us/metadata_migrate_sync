@@ -33,8 +33,8 @@ class provenance(BaseModel, metaclass=SingletonMeta):
 
     task_name: Literal["migrate", "ingest", "sync"]
     source_index_id: str | UUID | AnyUrl
-    source_index_type: Literal["solr", "global"]
-    source_index_name: Literal["ornl", "anl", "llnl"]
+    source_index_type: Literal["solr", "globus"]
+    source_index_name: Literal["ornl", "anl", "llnl", "stage"]
     source_index_schema: str = "solr"
 
     ingest_index_id: str | UUID

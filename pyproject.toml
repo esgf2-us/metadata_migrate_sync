@@ -37,6 +37,8 @@ dev-dependencies = [
     "ruff>=0.11.2",
 ]
 
+[tool.ruff]
+line-length = 110  # Default: 88 (same as Black)
 
 [tool.ruff.lint]
 # Enable additional rules
