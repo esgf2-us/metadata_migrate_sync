@@ -20,7 +20,6 @@ from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.query import SolrQuery, params_search
 from metadata_migrate_sync.solr import SolrIndexes
 
-import json
 
 @validate_call
 def metadata_migrate(
