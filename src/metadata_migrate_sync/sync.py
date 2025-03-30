@@ -246,7 +246,7 @@ if __name__ == "__main__":
     metadata_sync(
         source_epname="stage",
         target_epname="test",
-        project=ProjectReadWrite.CMIP6PLUS,
-        production=True,
+        project=ProjectReadWrite.INPUT4MIPS,
+        production=False,
     )
 

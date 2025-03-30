@@ -438,50 +438,62 @@ class GlobusQuery(BaseQuery):
         if str(_globus_index_id) != str(self.end_point):
             raise ValueError("please give a right end point")
 
-        sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
+        #sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
         for filter in self.query["filters"]:
             sq.add_filter(filter["field_name"], filter["values"], type=filter["type"])
 
         page_size = self.query["limit"]
+
         offset = self.query["offset"]
-
-
         max_retries = 3
         total_returned = 0
 
-        while True:
-            retries = 0
-            r = None
-            while retries < max_retries:
-                try:
-                    start = time.time()
-                    sq.set_query("*").set_limit(page_size).set_offset(offset)
-                    r = sc.post_search(_globus_index_id, sq)
-                    elapsed_time = time.time() - start
-                    break
 
-                except GlobusAPIError as e:
-                    if e.http_status == 429:  # Rate limited
-                        retries += 1
-                        time.sleep(2 ** retries)  # Exponential backoff
-                        continue
-                    raise  # Re-raise other errors
+        sq.set_query("*").set_limit(page_size)
+        start = time.time()
+        for batch in sc.paginated.scroll(_globus_index_id, sq):
+            elapsed_time = time.time() - start
+            start = time.time()
 
-            if not r:
-                break
-
-            entries = r.data
-
-            offset += page_size
+            entries = batch.data
             total_returned += len(entries)
             self._total_returned = total_returned
             self.prov_collect(entries, elapsed_time, sq)
-
             yield entries
 
-            self.query["offset"] = offset
-            if not r.data["has_next_page"]:
-                break
+        #-while True:
+        #-    retries = 0
+        #-    r = None
+        #-    while retries < max_retries:
+        #-        try:
+        #-            start = time.time()
+        #-            sq.set_query("*").set_limit(page_size).set_offset(offset)
+        #-            r = sc.post_search(_globus_index_id, sq)
+        #-            elapsed_time = time.time() - start
+        #-            break
+
+        #-        except GlobusAPIError as e:
+        #-            if e.http_status == 429:  # Rate limited
+        #-                retries += 1
+        #-                time.sleep(2 ** retries)  # Exponential backoff
+        #-                continue
+        #-            raise  # Re-raise other errors
+
+        #-    if not r:
+        #-        break
+
+        #-    entries = r.data
+
+        #-    offset += page_size
+        #-    total_returned += len(entries)
+        #-    self._total_returned = total_returned
+        #-    self.prov_collect(entries, elapsed_time, sq)
+
+        #-    yield entries
+
+        #-    self.query["offset"] = offset
+        #-    if not r.data["has_next_page"]:
+        #-        break
 
     def prov_collect(self, entries:dict[Any, Any], req_time: float, sq: SearchQuery):
 
