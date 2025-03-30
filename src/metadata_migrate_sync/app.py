@@ -9,6 +9,7 @@ from metadata_migrate_sync.check_ingest_tasks import check_ingest_tasks
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
+from metadata_migrate_sync.sync import metadata_sync
 
 sys.setrecursionlimit(10000)
 
@@ -36,7 +37,7 @@ def validate_meta(meta: str) -> str:
 
 def validate_src_ep(ep: str) -> str:
 
-    if ep not in ["ornl", "anl", "llnl"]:
+    if ep not in ["ornl", "anl", "llnl", "stage"]:
         raise typer.BadParameter(f"{ep} is not a supported ep")
     return ep
 

@@ -10,7 +10,7 @@ from pydantic import (
     validate_call,
 )
 
-from metadata_migrate_sync.database import Datasets, Files, Ingest, MigrationDB
+from metadata_migrate_sync.database import Datasets, Files, Ingest, MigrationDB, Query
 from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, FileDocs
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
@@ -131,8 +131,8 @@ class GlobusIngest(BaseIngest):
 
         DBsession = MigrationDB.get_session()
         with DBsession() as session:
-            # last_query = session.query(Query).order_by(Query.id.desc()).first()
-            last_query = current_query
+            last_query = session.query(Query).order_by(Query.id.desc()).first()
+            #last_query = current_query
 
             n_datasets = 0
             n_files = 0
@@ -222,3 +222,28 @@ def generate_gmeta_list(
     }
 
     return gmeta_list, all_entries
+
+
+@validate_call
+def generate_gmeta_list_globus(
+    gdoc: dict[str, Any]
+) -> dict[str, Any]:
+
+    gmeta_entries = []
+
+    for g in gdoc["gmeta"]:
+
+        gmeta_dict = {
+            "id": g["entries"][0]["entry_id"],
+            "subject": g["subject"],
+            "visible_to": ["public"],
+            "content":g["entries"][0]["content"],
+        }
+        gmeta_entries.append(gmeta_dict)
+
+    gmeta_list = {
+        "ingest_type": "GMetaList",
+        "ingest_data": {"gmeta": gmeta_entries},
+    }
+
+    return gmeta_list
