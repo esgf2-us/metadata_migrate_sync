@@ -21,6 +21,8 @@ class ProjectReadOnly(str, Enum):
     GEOMIP = "GeoMIP"
     LUCID = "LUCID"
     TAMIP = "TAMIP"
+    GFDL_CMIP6 = "GFDL-CMIP6"
+    GFDL_LLNL = "GFDL-LLNL"
 
 
 class ProjectReadWrite(str, Enum):

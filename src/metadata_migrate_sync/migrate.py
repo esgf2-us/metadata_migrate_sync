@@ -92,8 +92,14 @@ def metadata_migrate(
         if project.value == "CMIP6":
             search_dict["rows"] = 1500
 
-        if project.value == "e3sm":
-            search_dict["rows"] = 200
+        if project.value == "e3sm" or project.value == "e3sm-supplement":
+            search_dict["rows"] = 100
+
+        if project.value == "GFDL-CMIP6":
+            search_dict["shards"] = f"localhost:8995/solr/{metatype}"
+
+        if project.value == "GFDL-LLNL":
+            search_dict["data_node"] = "esgdata.gfdl.noaa.gov"
 
 
         maxpage = None
