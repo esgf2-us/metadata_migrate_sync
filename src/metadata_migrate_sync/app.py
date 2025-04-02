@@ -4,7 +4,9 @@ import sys
 from enum import Enum
 
 import typer
+import json
 
+from rich import print
 from metadata_migrate_sync.check_ingest_tasks import check_ingest_tasks
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.migrate import metadata_migrate
@@ -108,7 +110,6 @@ def check_index(
         for index_name in cm.indexes:
             index_id = cm.indexes.get(index_name)
             r = sc.get_index(index_id)
-            print (r.data)
             tab_index.append(r.data)
 
     else:
@@ -163,28 +164,32 @@ def query_globus(
     globus_ep: str = typer.Argument(
         help="globus end point name", callback=validate_tgt_ep),
     project: str = typer.Argument(help="project name", callback=validate_project),
-    orderby: str = typer.Option(help="sort the result by"),
+    order_by: str = typer.Option(help="sort the result by field_name.asc or field_name.desc"),
     limit: int = typer.Option(10, help="the limit of a page"),
-    timerange: str = typer.Option(help="time range in search")
+    offset: int = typer.Option(0, help="the offset of a page (less than 10000)"),
+    time_range: str = typer.Option(help="time range in search"),
+    save: str = typer.Option(None, help="save the page to the json file"),
+    printvar: str = typer.Option(None, help="print the content"),
 ):
 
-
-
-    if 'TO' not in timerange:
+    if 'TO' not in time_range:
         print ("please provide a validate time range datetime-datetime")
-        return
+        raise typer.Abort()
 
 
-    start_time = timerange.split('TO')[0]
+    start_time = time_range.split('TO')[0]
+    if start_time == '':
+        start_iso = "*"
+    else:
+        t_start = datetime.datetime.fromisoformat(start_time)
+        start_iso = t_start.isoformat() + "Z"  # "2023-01-01T00:00:00Z"
 
-    t_start = datetime.datetime.fromisoformat(start_time)
-    start_iso = t_start.isoformat() + "Z"  # "2023-01-01T00:00:00Z"
-
-
-    end_time = timerange.split('TO')[1]
-    t_end = datetime.datetime.fromisoformat(end_time)
-
-    end_iso = t_end.isoformat() + "Z"     # "2023-12-31T00:00:00Z"
+    end_time = time_range.split('TO')[1]
+    if end_time == '':
+        end_iso = "*"
+    else:
+        t_end = datetime.datetime.fromisoformat(end_time)
+        end_iso = t_end.isoformat() + "Z"     # "2023-12-31T00:00:00Z"
 
     time_cond = {
         "type": "range",
@@ -195,65 +200,99 @@ def query_globus(
          }]
     }
 
-    if "." not in orderby:
+    if "." not in order_by:
         print ("please provide the correcit orderbu")
-        sys.exit()
+        raise typer.Abort()
 
-    order_field = orderby.split('.')[0]
-    order = orderby.split('.')[1]
+    order_field = order_by.split('.')[0]
+    order = order_by.split('.')[1]
+
+    query = {"filters":[], "sort_field": order_field, "sort": order}
+
+    if project is not None:
+        proj_cond = {"type": "match_all", "field_name": "project", "values": [project.value]}
+        query["filters"].append(proj_cond)
+    query["filters"].append(time_cond)
 
     kwargs = {}
     if ctx.args:
         for arg in ctx.args:
-            typer.echo (arg)
             if "=" in arg and "--" in arg:
                 key, value = arg.split("=", 1)
                 kwargs[key] = value
             else:
                 typer.echo(f"Ignoring invalid argument: {arg}")
 
+
     # Handle kwargs
-    query = {"filters":[], "sort_field": order_field, "sort": order}
-    proj_cond = {"type": "match_all", "field_name": "project", "values": [project.value]}
-    query["filters"].append(proj_cond)
-
-    query["filters"].append(time_cond)
     if kwargs:
-        typer.echo("Query filters:")
         for key, value in kwargs.items():
-            typer.echo(f"{key[2:]}: {value}")
-            filter_cond = {"type": "match_all", "field_name": key[2:], "values": [value]}
-
             if key[2:] == "project":
                  query["filters"].remove(proj_cond)
-                 query["filters"].append(filter_cond)
+            if "::" in value:
+                value_1 = value.split("::")[0]
+                value_2 = value.split("::")[1]
+                if value_2 == "like":
+                    filter_cond = {"type": value_2, "field_name": key[2:], "value": value_1}
+                else:
+                    filter_cond = {"type": value_2, "field_name": key[2:], "values": [value_1]}
+
+            else:
+                filter_cond = {"type": "match_all", "field_name": key[2:], "values": [value]}
+            query["filters"].append(filter_cond)
 
     query["limit"] = limit
-
-    #-gq = GlobusQuery(
-    #-    end_point="c0173b0c-5587-437a-a912-ef09b6d14e9c",
-    #-    ep_type="globus",
-    #-    ep_name="public_old",
-    #-    project=ProjectReadOnly.CMIP6,
-    #-    query=query,
-    #-    generator=False,
-    #-)
-    #-# project is not used
-    #-gq.run()
-
-        #-else:
-        #-sq.set_query("*").set_limit(page_size).set_offset(0)
-        #-r = sc.post_search(_globus_index_id, sq)
+    query["offset"] = offset
 
 
-        #-with open("data.json", "w") as f:
-        #-    json.dump(r.data, f)
+    if globus_ep == "test":
+        client_name = "test"
+        index_name = globus_ep
+    elif globus_ep == "public" or globus_ep == "public_old":
+        client_name = "public"
+        index_name = globus_ep
+    else:
+        client_name = "stage"
+        index_name = project.value
 
-        #-for g in r.data.get("gmeta"):
-        #-    print (g["entries"][0]["content"]["_timestamp"])
 
-    pass
+    gc = GlobusClient()
+    cm = gc.get_client(client_name)
+    sc = cm.search_client
+    sq = cm.search_query
 
+    _globus_index_id = cm.indexes[index_name]
+
+
+    sq.set_query("*").set_limit(query["limit"]).set_offset(query["offset"])
+    sq.add_sort(query.get("sort_field"), order=query.get("sort"))
+
+    sq["filters"] = query["filters"] 
+
+    r = sc.post_search(_globus_index_id, sq)
+
+    if save is not None:
+        with open(save, "w") as f:
+            json.dump(r.data, f)
+
+    if printvar is not None:
+        for k, g in enumerate(r.data.get("gmeta")):
+
+            print_dict = {
+                "total:": r.data.get("total"), 
+                "subject": g["subject"], 
+            }
+
+            for var in printvar.split(','):
+                if var in g["entries"][0]["content"]:
+                    print_dict.update({
+                        var: g["entries"][0]["content"][var],
+                    })
+
+            print (print_dict)
+
+            if k >= 10:
+               break
 
 @app.command()
 def check_task(
