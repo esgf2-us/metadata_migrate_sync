@@ -87,7 +87,7 @@ def metadata_migrate(
         }
 
     if production:
-        search_dict["rows"] = 500
+        search_dict["rows"] = 1500
 
         if project.value == "CMIP6":
             search_dict["rows"] = 1500
@@ -96,11 +96,32 @@ def metadata_migrate(
             search_dict["rows"] = 100
 
         if project.value == "GFDL-CMIP6":
+            if source_epname != "llnl":
+                print (f"for the project {project.value}, only llnl is allowed")
+                sys.exit()
             search_dict["shards"] = f"localhost:8995/solr/{metatype}"
+            search_dict["q"] = "project: CMIP6"
 
-        if project.value == "GFDL-LLNL":
-            search_dict["data_node"] = "esgdata.gfdl.noaa.gov"
+        if project.value == "GFDL-CMIP5":
+            if source_epname != "llnl":
+                print (f"for the project {project.value}, only llnl is allowed")
+                sys.exit()
+            search_dict["shards"] = f"localhost:8995/solr/{metatype}"
+            search_dict["q"] = "project: CMIP5"
 
+        if project.value == "GFDL-LLNL-CMIP6":
+            if source_epname != "llnl":
+                print (f"for the project {project.value}, only llnl is allowed")
+                sys.exit()
+            search_dict["fq"] = "data_node:esgdata.gfdl.noaa.gov"
+            search_dict["q"] = "project: CMIP6"
+
+        if project.value == "GFDL-LLNL-CMIP5":
+            if source_epname != "llnl":
+                print (f"for the project {project.value}, only llnl is allowed")
+                sys.exit()
+            search_dict["fq"] = "data_node:esgdata.gfdl.noaa.gov"
+            search_dict["q"] = "project: CMIP5"
 
         maxpage = None
         if target_epname == "test":
