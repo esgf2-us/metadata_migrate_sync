@@ -214,29 +214,32 @@ def query_globus(
         query["filters"].append(proj_cond)
     query["filters"].append(time_cond)
 
-    kwargs = {}
+    kwargs = []
     if ctx.args:
         for arg in ctx.args:
             if "=" in arg and "--" in arg:
                 key, value = arg.split("=", 1)
-                kwargs[key] = value
+                kwargs.append((key, value))
             else:
                 typer.echo(f"Ignoring invalid argument: {arg}")
 
 
     # Handle kwargs
     if kwargs:
-        for key, value in kwargs.items():
+        for key, value in kwargs:
             if key[2:] == "project":
                  query["filters"].remove(proj_cond)
             if "::" in value:
                 value_1 = value.split("::")[0]
                 value_2 = value.split("::")[1]
-                if value_2 == "like":
-                    filter_cond = {"type": value_2, "field_name": key[2:], "value": value_1}
-                else:
-                    filter_cond = {"type": value_2, "field_name": key[2:], "values": [value_1]}
 
+                match value_2:
+                    case "like":
+                        filter_cond = {"type": value_2, "field_name": key[2:], "value": value_1}
+                    case "not":
+                        filter_cond = {"type": value_2, "filter":{"type": "match_all", "field_name": key[2:], "values": [value_1]}}
+                    case _:
+                        filter_cond = {"type": value_2, "field_name": key[2:], "values": [value_1]}
             else:
                 filter_cond = {"type": "match_all", "field_name": key[2:], "values": [value]}
             query["filters"].append(filter_cond)
@@ -266,7 +269,6 @@ def query_globus(
 
     sq.set_query("*").set_limit(query["limit"]).set_offset(query["offset"])
     sq.add_sort(query.get("sort_field"), order=query.get("sort"))
-
     sq["filters"] = query["filters"] 
 
     r = sc.post_search(_globus_index_id, sq)
@@ -279,7 +281,7 @@ def query_globus(
         for k, g in enumerate(r.data.get("gmeta")):
 
             print_dict = {
-                "total:": r.data.get("total"), 
+                "total": r.data.get("total"), 
                 "subject": g["subject"], 
             }
 
@@ -289,7 +291,7 @@ def query_globus(
                         var: g["entries"][0]["content"][var],
                     })
 
-            print (print_dict)
+            print (json.dumps(print_dict))
 
             if k >= 10:
                break
