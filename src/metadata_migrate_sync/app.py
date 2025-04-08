@@ -1,21 +1,35 @@
+
+"""Main CLI interface to the ESGF-1.5 migration and synchronization tools.
+
+the subcommands are:
+  - migrate
+  - sync
+  - ...
+
+"""
+
+
 #!/usr/bin/env python
+
 import datetime
+import json
+import pathlib
 import sys
 from enum import Enum
 
 import typer
-import json
-
 from rich import print
+
 from metadata_migrate_sync.check_ingest_tasks import check_ingest_tasks
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.sync import metadata_sync
+from metadata_migrate_sync.query import GlobusQuery
 
 sys.setrecursionlimit(10000)
 
-def combine_enums(*enums, name="CombinedEnum") -> Enum:
+def _combine_enums(*enums: Enum, name:str="CombinedEnum") -> Enum:
     members = {}
     for enum in enums:
         for member in enum:
@@ -26,31 +40,31 @@ def combine_enums(*enums, name="CombinedEnum") -> Enum:
     return Enum(name, members)
 
 
-Project = combine_enums(ProjectReadOnly, ProjectReadWrite)
+Project = _combine_enums(ProjectReadOnly, ProjectReadWrite)
 
 app = typer.Typer()
 
 
-def validate_meta(meta: str) -> str:
+def _validate_meta(meta: str) -> str:
     if meta not in ["files", "datasets"]:
         raise typer.BadParameter("meta must be 'files' or 'datasets'")
     return meta
 
 
-def validate_src_ep(ep: str) -> str:
+def _validate_src_ep(ep: str) -> str:
 
     if ep not in ["ornl", "anl", "llnl", "stage"]:
         raise typer.BadParameter(f"{ep} is not a supported ep")
     return ep
 
 
-def validate_tgt_ep(ep: str) -> str:
+def _validate_tgt_ep(ep: str) -> str:
     if ep not in ["test", "public", "stage"]:
         raise typer.BadParameter(f"{ep} is not a supported ep ")
     return ep
 
 
-def validate_project(project: str) -> str:
+def _validate_project(project: str) -> str:
     if project is not None:
         for p in ProjectReadOnly:
             if p.value == project:
@@ -65,16 +79,19 @@ def validate_project(project: str) -> str:
 @app.command()
 def migrate(
     source_ep: str = typer.Argument(
-        help="source end point name", callback=validate_src_ep
+        help="source end point name", callback=_validate_src_ep
     ),
     target_ep: str = typer.Argument(
-        help="target end point name", callback=validate_tgt_ep
+        help="target end point name", callback=_validate_tgt_ep
     ),
-    project: str = typer.Argument(help="project name", callback=validate_project),
-    meta: str = typer.Option(help="metadata type", callback=validate_meta),
+    project: str = typer.Argument(help="project name", callback=_validate_project),
+    meta: str = typer.Option(help="metadata type", callback=_validate_meta),
     prod: bool = typer.Option(help="production run", default=False),
 ) -> None:
+    """Migrate documents in solr index to the globus index.
 
+    Following the ESGF-1.5 migration plan and desingation
+    """
     metadata_migrate(
         source_epname=source_ep,
         target_epname=target_ep,
@@ -83,7 +100,7 @@ def migrate(
         production=prod,
     )
 
-def validate_tgt_ep_all(ep: str) -> str:
+def _validate_tgt_ep_all(ep: str) -> str:
     if ep not in ["test", "public", "stage", "all-prod"]:
         raise typer.BadParameter(f"{ep} is not a supported ep ")
     return ep
@@ -91,14 +108,11 @@ def validate_tgt_ep_all(ep: str) -> str:
 @app.command()
 def check_index(
     globus_ep: str = typer.Argument(
-        help="globus end point name", callback=validate_tgt_ep_all),
-    project: str = typer.Option(None, help="project name", callback=validate_project),
+        help="globus end point name", callback=_validate_tgt_ep_all),
+    project: str = typer.Option(None, help="project name", callback=_validate_project),
     save: bool = typer.Option(False, help="save to index.json"),
 ) -> None:
-
-    import json
-    import pathlib
-
+    """Check the globus index status."""
     gc = GlobusClient()
     cm = gc.get_client(name = globus_ep)
 
@@ -110,6 +124,7 @@ def check_index(
         for index_name in cm.indexes:
             index_id = cm.indexes.get(index_name)
             r = sc.get_index(index_id)
+            print (r.data)
             tab_index.append(r.data)
 
     else:
@@ -131,15 +146,18 @@ def check_index(
 @app.command()
 def sync(
     source_ep: str = typer.Argument(
-        help="source end point name", callback=validate_src_ep
+        help="source end point name", callback=_validate_src_ep
     ),
     target_ep: str = typer.Argument(
-        help="target end point name", callback=validate_tgt_ep
+        help="target end point name", callback=_validate_tgt_ep
     ),
-    project: str = typer.Argument(help="project name", callback=validate_project),
+    project: str = typer.Argument(help="project name", callback=_validate_project),
     prod: bool = typer.Option(help="production run", default=False),
 ) -> None:
+    """Sync the ESGF-1.5 staged indexes to the public index.
 
+    Details can be seen in the design.md
+    """
     metadata_sync(
         source_epname=source_ep,
         target_epname=target_ep,
@@ -149,7 +167,8 @@ def sync(
 
 
 @app.command()
-def create_index():
+def create_index() -> None:
+    """Create index for the test app."""
     gc = GlobusClient()
     cm = gc.get_client(name = "test")
     sc = cm.search_client
@@ -162,16 +181,18 @@ def create_index():
 def query_globus(
     ctx: typer.Context,
     globus_ep: str = typer.Argument(
-        help="globus end point name", callback=validate_tgt_ep),
-    project: str = typer.Argument(help="project name", callback=validate_project),
+        help="globus end point name", callback=_validate_tgt_ep),
+    project: str = typer.Argument(help="project name", callback=_validate_project),
     order_by: str = typer.Option(help="sort the result by field_name.asc or field_name.desc"),
     limit: int = typer.Option(10, help="the limit of a page"),
     offset: int = typer.Option(0, help="the offset of a page (less than 10000)"),
     time_range: str = typer.Option(help="time range in search"),
     save: str = typer.Option(None, help="save the page to the json file"),
     printvar: str = typer.Option(None, help="print the content"),
-):
-
+    paginator: str = typer.Option("post", help="globus query type (post and scroll"),
+    marker: str = typer.Option("None", help="marker for scroll search"),
+) -> None:
+    """Search globus index with normal and scroll paginations."""
     if 'TO' not in time_range:
         print ("please provide a validate time range datetime-datetime")
         raise typer.Abort()
@@ -237,7 +258,15 @@ def query_globus(
                     case "like":
                         filter_cond = {"type": value_2, "field_name": key[2:], "value": value_1}
                     case "not":
-                        filter_cond = {"type": value_2, "filter":{"type": "match_all", "field_name": key[2:], "values": [value_1]}}
+                        filter_cond = {
+                                           "type": value_2,
+                                           "filter":
+                                           {
+                                                "type": "match_all",
+                                                "field_name": key[2:],
+                                                "values": [value_1],
+                                           },
+                                       }
                     case _:
                         filter_cond = {"type": value_2, "field_name": key[2:], "values": [value_1]}
             else:
@@ -248,30 +277,72 @@ def query_globus(
     query["offset"] = offset
 
 
-    if globus_ep == "test":
-        client_name = "test"
-        index_name = globus_ep
-    elif globus_ep == "public" or globus_ep == "public_old":
-        client_name = "public"
-        index_name = globus_ep
+    #-if globus_ep == "test":
+    #-    client_name = "test"
+    #-    index_name = globus_ep
+    #-elif globus_ep == "public" or globus_ep == "public_old":
+    #-    client_name = "public"
+    #-    index_name = globus_ep
+    #-else:
+    #-    client_name = "stage"
+    #-    index_name = project.value
+
+    client_name, index_name = GlobusClient.get_client_index_names(globus_ep, project.value)
+
+    _globus_index_id = GlobusClient.globus_clients[client_name].indexes[index_name]
+
+
+    gq = GlobusQuery(
+        end_point=_globus_index_id,
+        ep_type="globus",
+        ep_name=globus_ep,
+        project=project,
+        query=query,
+        generator=True,
+        paginator=paginator,
+        skip_prov=True,
+    )
+    if marker is not None and paginator == "scroll":
+        query["marker"] = marker
     else:
-        client_name = "stage"
-        index_name = project.value
+        query.pop("marker", None)
+
+    
+    for page_num, page in enumerate(gq.run()):
+        print (page["marker"])
+        if page_num >= 5:
+            break
+
+    sys.exit()
+
+    #-gc = GlobusClient()
+    #-cm = gc.get_client(client_name)
+    #-sc = cm.search_client
+    #-sq = cm.search_query
+
+    #-_globus_index_id = cm.indexes[index_name]
 
 
-    gc = GlobusClient()
-    cm = gc.get_client(client_name)
-    sc = cm.search_client
-    sq = cm.search_query
+    #-sq.set_query("*").set_limit(query["limit"])
+    #-sq["filters"] = query["filters"]
 
-    _globus_index_id = cm.indexes[index_name]
+    #-if paginate == "post":
+    #-    sq.add_sort(query.get("sort_field"), order=query.get("sort")).set_offset(query["offset"])
+    #-    r = sc.post_search(_globus_index_id, sq)
+    #-elif paginate == "scroll":
 
+    #-    if marker is not None:
+    #-        sq["marker"] = marker
 
-    sq.set_query("*").set_limit(query["limit"]).set_offset(query["offset"])
-    sq.add_sort(query.get("sort_field"), order=query.get("sort"))
-    sq["filters"] = query["filters"] 
+    #-    i = 0
+    #-    for batch in sc.paginated.scroll(_globus_index_id, sq):
+    #-         r = batch
+    #-         i = i + 1
+    #-         print (r.data["marker"])
 
-    r = sc.post_search(_globus_index_id, sq)
+    #-         if i >= 5:
+    #-             break
+
 
     if save is not None:
         with open(save, "w") as f:
@@ -281,8 +352,8 @@ def query_globus(
         for k, g in enumerate(r.data.get("gmeta")):
 
             print_dict = {
-                "total": r.data.get("total"), 
-                "subject": g["subject"], 
+                "total": r.data.get("total"),
+                "subject": g["subject"],
             }
 
             for var in printvar.split(','):
@@ -301,13 +372,21 @@ def check_task(
     task_id: str = typer.Option(None, help="the ingest task id"),
     db_file: str = typer.Option(None, help="the ingest task id"),
     update: bool = typer.Option(False, help="update the succeeded flag in the database"),
-):
+) -> None:
+    """Check the globus task ids."""
     check_ingest_tasks(
         task_id = task_id,
         db_file = db_file,
         update = update,
     )
 
+
+@app.callback()
+def main(ctx: typer.Context) -> None:
+    """Add the tip for more filter functions."""
+    if ctx.invoked_subcommand == "query-globus":
+        print ("\n[bold red]Attention:[/bold red] more globus filters can " +
+            "be applied by [green]--keyword=value::filter_option[/green]")
 
 if __name__ == "__main__":
     app()

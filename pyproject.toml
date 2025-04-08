@@ -35,6 +35,8 @@ dev-dependencies = [
     "pytest-snapshot>=0.9.0",
     "responses>=0.25.7",
     "ruff>=0.11.2",
+    "types-requests",
+    "types-tqdm",
 ]
 
 [tool.ruff]
@@ -61,6 +63,7 @@ select = [
 
 # Ignore specific rules
 ignore = [
+    "N806", # varaibles in fuction shall be low case
     "D107", # Missing docstring in __init__
     "ANN101" # Missing type annotation for self
 ]
@@ -83,6 +86,19 @@ docstring-code-line-length = "dynamic"
     "ANN",
     "ARG"
 ]
+
+[tool.mypy]
+strict = true
+# prevent unimported libraries silently being treated as Any
+disallow_any_unimported = true
+# show error codes on failure with context
+show_error_codes = true
+show_error_context = true
+# warn if code can't be reached
+warn_unreachable = true
+# importing following uses default settings
+follow_imports = "normal"
+
 
 [build-system]
 requires = ["hatchling"]

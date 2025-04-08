@@ -4,7 +4,10 @@ from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, Fil
 from metadata_migrate_sync.provenance import provenance
 
 
-def convert_to_esgf_1_5(solr_doc: FileDocs | DatasetDocs, metatype: Literal["datasets", "files"]) -> dict[Any, Any] | None:
+def convert_to_esgf_1_5(
+    solr_doc: FileDocs | DatasetDocs | dict[str, Any], 
+    metatype: Literal["datasets", "files"]
+) -> dict[Any, Any] | None:
 
     esgf_doc = solr_doc
 

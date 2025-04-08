@@ -1,3 +1,5 @@
+"""Define classes related to solr indexes."""
+
 from dataclasses import dataclass
 
 

@@ -3,42 +3,23 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
+from sqlalchemy.orm import object_session
+
 from globus_sdk import SearchClient
 from pydantic import (
     BaseModel,
-    field_validator,
     validate_call,
 )
 
 from metadata_migrate_sync.database import Datasets, Files, Ingest, MigrationDB, Query
-from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, FileDocs
-from metadata_migrate_sync.globus import GlobusClient
+from metadata_migrate_sync.globus import GlobusClient, GlobusIngestModel
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 
 
-class GlobusMeta(BaseModel):
-    id: Literal["file", "dataset"]  # files or datasets
-    subject: str
-    visible_to: list[str] | None = ["public"]
-    content: DatasetDocs | FileDocs | dict[str, Any]
-
-
-class GlobusIngestModel(BaseModel):
-    ingest_type: Literal["GMetaList"] | None = "GMetaList"
-    ingest_data: dict[str, list[GlobusMeta]]
-
-    @field_validator("ingest_data")
-    @classmethod
-    def check_gmeta(cls, data: dict[Any, Any]) -> dict[Any, Any]:
-        logger = provenance._instance.get_logger(__name__)
-        if len(data.keys()) != 1 or "gmeta" not in data:
-            logger.error("no gmeta in the dict")
-            raise ValueError("no gmeta in the dict")
-        return data
-
-
 class BaseIngest(BaseModel):
+    """ingestion base model."""
+
     end_point: str | UUID | None = None
     ep_type: Literal["solr", "globus"] = "globus"
     ep_name: str
@@ -46,13 +27,14 @@ class BaseIngest(BaseModel):
 
 
 class GlobusIngest(BaseIngest):
+    """Globus ingestion model."""
 
     _submitted: bool = False
-    _response_data: dict[Any, Any]
+    _response_data: dict[Any, Any] = {}
 
     # from globus2solr
     def ingest(self, gingest: dict[str, Any]) -> None:
-
+        """Ingest documents to a globus index using globus search client."""
         logger = provenance._instance.get_logger(__name__)
 
         current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -94,8 +76,9 @@ class GlobusIngest(BaseIngest):
         review: bool,
         current_query: Any,
         metatype: Literal["files", "datasets"],
+        batch_num: int = -1,
     ) -> None:
-
+        """Provenance collection and database updation."""
         logger = provenance._instance.get_logger(__name__)
 
         if not self._submitted:
@@ -115,9 +98,11 @@ class GlobusIngest(BaseIngest):
             )
             DBsession = MigrationDB.get_session()
             with DBsession() as session:
-                current_ingest = session.query(Ingest).filterby(
+                current_ingest: Ingest = session.query(Ingest).filter_by(
                     pages=current_query.pages
-                )
+                ).first()
+
+                # for batched ingestion, it will be array. how to do?
 
                 current_ingest.task_id = self._response_data.get("task_id")
                 current_ingest.ingest_response = json.dumps(self._response_data)
@@ -131,18 +116,17 @@ class GlobusIngest(BaseIngest):
 
         DBsession = MigrationDB.get_session()
         with DBsession() as session:
-            last_query = session.query(Query).order_by(Query.id.desc()).first()
-            #last_query = current_query
+
+            if object_session(current_query) is None:
+                last_query = session.query(Query).order_by(Query.id.desc()).first()
+            else:
+                last_query = current_query
 
             n_datasets = 0
             n_files = 0
             for doc in docs:
                 if metatype == "files":
-
-                    if "url" in doc:
-                        urls = ",".join(doc.get("url"))
-                    else:
-                        urls = "NoURL"
+                    urls = ",".join(doc.get("url")) if "url" in doc else "NoURL"
                     files_obj = Files(
                         query=last_query,
                         source_index=last_query.index_id,
@@ -162,7 +146,6 @@ class GlobusIngest(BaseIngest):
                         source_index=last_query.index_id,
                         target_index=str(self.end_point),
                         datasets_id=doc.get("id"),
-                        # uri=",".join(doc.get("url")),
                         success=-9 if "skip_ingest" in doc else 0,
                     )
                     session.add(datasets_obj)
@@ -177,7 +160,7 @@ class GlobusIngest(BaseIngest):
 
             ingest_obj = Ingest(
                 n_ingested=len(docs),
-                n_datasets=n_datasets,
+                n_datasets=n_datasets if batch_num == -1 or n_datasets > 0 else batch_num,
                 n_files=n_files,
                 index_id=str(self.end_point),
                 task_id=task_id,
@@ -195,7 +178,7 @@ class GlobusIngest(BaseIngest):
 def generate_gmeta_list(
     docs: list[dict[str, Any]], metatype: Literal["files", "datasets"]
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Generate gmeta list for ingestion"""
+    """Generate gmeta list for ingestion from solr documents."""
     from metadata_migrate_sync.convert import convert_to_esgf_1_5
 
     gmeta_entries = []
@@ -227,9 +210,13 @@ def generate_gmeta_list(
 @validate_call
 def generate_gmeta_list_globus(
     gdoc: dict[str, Any]
-) -> dict[str, Any]:
-
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Generate gmeta list for ingestion from globus documents."""
     gmeta_entries = []
+
+    # need to add the "skip_ingest: True"
+    # in the content if there are skips
+    gmeta_entries_skipped: list[dict[str, Any]] = []
 
     for g in gdoc["gmeta"]:
 
@@ -241,9 +228,14 @@ def generate_gmeta_list_globus(
         }
         gmeta_entries.append(gmeta_dict)
 
-    gmeta_list = {
+    gmeta_ingest = {
         "ingest_type": "GMetaList",
         "ingest_data": {"gmeta": gmeta_entries},
     }
 
-    return gmeta_list
+    gmeta_ingest_skipped = {
+        "ingest_type": "GMetaList",
+        "ingest_data": {"gmeta": gmeta_entries_skipped},
+    }
+
+    return gmeta_ingest, gmeta_ingest_skipped

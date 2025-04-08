@@ -1,5 +1,6 @@
 import pathlib
-from typing import Any
+from enum import Enum
+from typing import Any, Literal
 from uuid import UUID
 
 from globus_sdk import (
@@ -9,10 +10,51 @@ from globus_sdk import (
     SearchQuery,
 )
 from globus_sdk.tokenstorage import SimpleJSONFileAdapter
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
+from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, FileDocs
 from metadata_migrate_sync.project import ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
+
+
+class GlobusCV(str, Enum):
+    """define the globus controlled vocabulary."""
+
+    GMETA = "gmeta"
+    ID = "id"
+    SUBJECT = "subject"
+    VISIBLE_TO = "visible_to"
+    CONTENT = "content"
+    INGEST_TYPE = "ingest_type"
+    INGEST_DATA = "ingest_data"
+    GMETALIST = "GMetaList"
+    ENTRY_ID = "entry_id"
+    PUBLIC = "public"
+
+class GlobusMeta(BaseModel):
+    """Globus meta model."""
+
+    id: Literal["file", "dataset"]  # files or datasets
+    subject: str
+    visible_to: list[str] | None = ["public"]
+    content: DatasetDocs | FileDocs | dict[str, Any]
+
+
+class GlobusIngestModel(BaseModel):
+    """Globus ingest model."""
+
+    ingest_type: Literal["GMetaList"] | None = "GMetaList"
+    ingest_data: dict[str, list[GlobusMeta]]
+
+    @field_validator("ingest_data")
+    @classmethod
+    def check_gmeta(cls, data: dict[Any, Any]) -> dict[Any, Any]:
+        """Check if the dictionary is GlobusMeta."""
+        logger = provenance._instance.get_logger(__name__)
+        if len(data.keys()) != 1 or "gmeta" not in data:
+            logger.error("no gmeta in the dict")
+            raise ValueError("no gmeta in the dict")
+        return data
 
 
 # from Lucasz and Nate code with some minor changes
@@ -58,7 +100,7 @@ You will have to login (or be logged in) to your Globus account. Globus will als
 
 
 class ClientModel(BaseModel):
-    """a client model includes many aspects and indexes"""
+    """A client model includes many aspects and indexes."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
     app_client_id: UUID
@@ -77,8 +119,9 @@ class ClientModel(BaseModel):
 
 
 class GlobusClient:
-    """a class to hold ESGF1.5 indexes and methods
-    indexes are from https://github.com/esgf2-us/esgf-1.5-design/blob/main/indexes.md
+    """a class to hold ESGF1.5 indexes and methods.
+
+    Indexes are from https://github.com/esgf2-us/esgf-1.5-design/blob/main/indexes.md
     commit: 8630c26
     """
 
@@ -128,7 +171,7 @@ class GlobusClient:
         self, client_name: str | None = None, client_model: ClientModel | None = None
     ):
 
-        if client_name == None or client_model == None:
+        if client_name is None or client_model is None:
             return None
         else:
             if client_name not in ["test", "prod-migration", "prod-sync"]:
@@ -136,21 +179,37 @@ class GlobusClient:
             else:
                 raise ValueError(f"{client_name} has been used")
 
+
+
+    @staticmethod
+    def get_client_index_names(
+        epname: Literal["public", "stage", "test", "all-prod"], 
+        index_value: str | ProjectReadWrite = "test",
+) -> tuple[str, str]:
+
+        if epname == "public":
+            client_name = "prod-migration"
+            index_name = "public"
+        elif epname == "stage":
+            client_name = "prod-sync"
+            index_name = value
+        elif epname == "all-prod":
+            client_name = "prod-all"
+            index_name = value
+        elif epname == "test":
+            client_name = "test"
+            index_name = "test"
+
+        return client_name, index_name
+    
     @classmethod
     def get_client(cls, name: str = "test") -> ClientModel:
 
         logger = provenance.get_logger(__name__)
 
-        if name == "public":
-            index_name = "prod-migration"
-        elif name == "stage":
-            index_name = "prod-sync"
-        elif name == "test":
-            index_name = "test"
-        elif name == "all-prod":
-            index_name = "prod-all"
+        client_name, _ = cls.get_client_index_names(name)
 
-        if index_name == "prod-all":
+        if client_name == "prod-all":
             client_prod_all = {}
 
             client_prod_all = dict(cls._client_prod_migration)
@@ -159,6 +218,7 @@ class GlobusClient:
 
             if client_prod_all["search_client"] is None:
 
+                # migration app client
                 client_prod_all["search_client"] = get_authorized_search_client(
                     client_prod_all["app_client_id"],
                     client_prod_all["token_name"],
@@ -169,15 +229,15 @@ class GlobusClient:
 
 
         else:
-            if cls.globus_clients[index_name].search_client == None:
-                logger.info(f"no search client and request for the index {index_name}")
+            if cls.globus_clients[client_name].search_client is None:
+                logger.info(f"no search client and request for the client {client_name}")
 
-                cls.globus_clients[index_name].search_client = get_authorized_search_client(
-                    cls.globus_clients[index_name].app_client_id,
-                    cls.globus_clients[index_name].token_name,
+                cls.globus_clients[client_name].search_client = get_authorized_search_client(
+                    cls.globus_clients[client_name].app_client_id,
+                    cls.globus_clients[client_name].token_name,
                 )
 
             logger.info(f"return the search client with the name {name}.")
 
-            return cls.globus_clients[index_name]
+            return cls.globus_clients[client_name]
 

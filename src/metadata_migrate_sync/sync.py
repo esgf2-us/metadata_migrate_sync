@@ -5,17 +5,51 @@ import math
 import pathlib
 import sys
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import validate_call
 from tqdm import tqdm
 
 from metadata_migrate_sync.database import MigrationDB, Query
-from metadata_migrate_sync.globus import GlobusClient
+from metadata_migrate_sync.globus import GlobusClient, GlobusCV
 from metadata_migrate_sync.ingest import GlobusIngest, generate_gmeta_list_globus
 from metadata_migrate_sync.project import ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.query import GlobusQuery
+
+
+class SyncConfig:
+    """config class for sync."""
+
+    PROD_MAX_INGEST_SIZE = 10 * 1000 * 1000 - 1000  # 10MB with buffer
+    TEST_MAX_INGEST_SIZE = 20000
+    TEST_MAX_PAGES = 2
+
+
+
+@validate_call
+def _process_batches(
+    gmeta_list: list[dict[str, Any]],
+    max_size_bytes: int,
+) -> list[list[dict[str, Any]]]:
+    """Process a batch of GMeta entries with size limits."""
+    batches = []
+    current_batch:list[dict[str,Any]] = []
+    current_size = 0
+
+    for gmeta in gmeta_list:
+        gmeta_size = len(json.dumps(gmeta))
+        if current_batch and (current_size + gmeta_size) > max_size_bytes:
+            batches.append(current_batch)
+            current_batch = []
+            current_size = 0
+        current_batch.append(gmeta)
+        current_size += gmeta_size
+
+    if current_batch:
+        batches.append(current_batch)
+
+    return batches
 
 
 @validate_call
@@ -27,21 +61,9 @@ def metadata_sync(
     production: bool,
 ) -> None:
     """Sync the metadata between two Globus Indexes."""
-    if target_epname == "public" and production:
-        target_client = "prod-migration"
-        target_index = target_epname
-    else:
-        target_client = "test"
-        target_index = "test"
+    target_client, target_index = GlobusClient.get_client_index_names(target_epname, target_epname)
 
-
-    if source_epname == "stage":
-        source_client = "prod-sync"
-        source_index = project.value
-    else:
-        source_client = "test"
-        source_index = "test"
-
+    source_client, source_index = GlobusClient.get_client_index_names(source_epname, project.value)
 
     current_timestr = datetime.now().strftime("%Y-%m-%d")
 
@@ -67,13 +89,16 @@ def metadata_sync(
 
     pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
 
-    logger = provenance._instance.get_logger(__name__)
+    logger = (
+        provenance._instance.get_logger(__name__)
+        if provenance._instance is not None else logging.getLogger()
+    )
 
     logger.info(f"set up the provenance and save it to {prov.prov_file}")
     logger.info(f"log file is at {prov.log_file}")
 
     # database
-    mdb = MigrationDB(prov.db_file, True)
+    _ = MigrationDB(prov.db_file, True)
     logger.info(f"initialed the sqllite database at {prov.db_file}")
 
     # query generator
@@ -104,7 +129,7 @@ def metadata_sync(
         search_dict["limit"] = 1000
         maxpage = None
     else:
-        search_dict["limit"] = 2
+        search_dict["limit"] = 20
         maxpage = 2
 
     gq = GlobusQuery(
@@ -113,7 +138,8 @@ def metadata_sync(
         ep_name=source_epname,
         project=project,
         query=search_dict,
-        generate=True,
+        generator=True,
+        paginator="scroll",
     )
 
 
@@ -133,7 +159,6 @@ def metadata_sync(
     current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info("query-ingest start at " + current_timestr)
 
-    n = 0
     with tqdm(
         gq.run(),
         desc="Processing",
@@ -144,97 +169,97 @@ def metadata_sync(
         ascii=" ░▒▓█",
     ) as pbar:
 
-        for page in pbar:
+        for page_num, page in enumerate(pbar):
             if not pbar.total and hasattr(gq, "_numFound") and gq._numFound:
                 pbar.total = math.ceil(gq._numFound / gq.query["limit"])
 
             if len(page) == 0:
-                logger.info(f"no data in this page {n}. stop the ingestion")
+                logger.info(f"Empty page {page_num}. stop sync!")
                 break
 
-            n = n + 1
-            gmeta_ingest = generate_gmeta_list_globus(page)
+            gmeta_ingest, gmeta_ingest_skipped = generate_gmeta_list_globus(page)
 
-            max_size_bytes = 10 * 1000 * 1000 - 1000
+            gq._n_batch = 0
+            # record the skipped entries
+            if len(
+                   gmeta_ingest_skipped[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+               ) > 0:
 
-            if len(gmeta_ingest["ingest_data"]["gmeta"]) > 0:
-
-                gq._n_batch = 0
-                ig._submitted = False
-
-                #batch ingestion
-                gmeta_ingest_batch={}
-                gmeta_ingest_batch["ingest_type"] = "GMetaList"
-                gmeta_ingest_batch["ingest_data"] = {"gmeta":[]}
-                base_size = len(json.dumps(gmeta_ingest_batch))
-                current_batch_size = base_size
-                new_page = []
-
-                for gmeta in gmeta_ingest["ingest_data"]["gmeta"]:
-                    gmeta_size = len(json.dumps(gmeta))
-                    # Check if adding this item would exceed the size limit
-                    if (
-                           gmeta_ingest_batch["ingest_data"]["gmeta"] and
-                           (current_batch_size + gmeta_size) > max_size_bytes
-                       ):
-                        # Process the current batch
-                        gq._n_batch += 1
-                        ig._submitted = False
-                        logger.debug(f"Processing batch {gq._n_batch}")
-                        ig.ingest(gmeta_ingest_batch)
-
-                        ig.prov_collect(
-                            new_page,
-                            review=False,
-                            current_query=gq._current_query,
-                            metatype="files",
-                        )
-                        # Start a new batch
-                        new_page = []
-                        gmeta_ingest_batch["ingest_data"]["gmeta"] =  []
-                        current_batch_size = base_size
-                    # Add item to current batch
-                    new_page.append(gmeta["content"])
-                    gmeta_ingest_batch["ingest_data"]["gmeta"].append(gmeta)
-                    current_batch_size += gmeta_size
-
-                if len(gmeta_ingest_batch["ingest_data"]["gmeta"]) > 0:
-                    gq._n_batch += 1
-                    ig._submitted = False
-                    logger.debug(f"Processing batch {gq._n_batch}")
-                    ig.ingest(gmeta_ingest_batch)
-
-                    ig.prov_collect(
-                        new_page,
-                        review=False,
-                        current_query=gq._current_query,
-                        metatype="files",
-                    )
-                logger.info(f"Batch {gq._n_batch} ingested successfully")
-                # update the n_batch in the query table
-                DBsession = MigrationDB.get_session()
-                with DBsession() as session, session.begin():
-                    prepage = session.query(Query).order_by(Query.id.desc()).first()
-                    prepage.n_datasets = gq._n_batch
-                    gq._n_batch = 0
-
-            else:
-                ig._response_data = None
+                ig._response_data = {}
                 ig._submitted = True
 
                 ig.prov_collect(
-                    new_page,
+                    [
+                        g[GlobusCV.CONTENT.value]
+                        for g in gmeta_ingest_skipped[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+                    ],
                     review=False,
                     current_query=gq._current_query,
                     metatype="files",
+                    batch_num=gq._n_batch,
                 )
 
-            if not production and (maxpage is not None) and n > maxpage:
+                logger.info(
+                    f"Skipped {len(gmeta_ingest_skipped[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value])}"
+                )
+
+            if len(gmeta_ingest[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]) == 0:
+                break
+
+            gmeta_list = gmeta_ingest[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+
+            if production:
+                batches = _process_batches(gmeta_list, SyncConfig.PROD_MAX_INGEST_SIZE)
+            else:
+                batches = _process_batches(gmeta_list, SyncConfig.TEST_MAX_INGEST_SIZE)
+
+            #-for b in batches:
+            #-     print (b)
+            #-     break
+            #-print (len(batches))
+
+            for n_batch, batch in enumerate(batches, start=1):
+
+                gq._n_batch = n_batch
+                ig._submitted = False
+                logger.debug(f"Processing batch {gq._n_batch}")
+
+                ig.ingest(
+                    {
+                        GlobusCV.INGEST_TYPE.value: GlobusCV.GMETALIST.value,
+                        GlobusCV.INGEST_DATA.value: {
+                            GlobusCV.GMETA.value: batch,
+                        }
+                    }
+                )
+
+                ig.prov_collect(
+                    [g[GlobusCV.CONTENT.value] for g in batch],
+                    review=False,
+                    current_query=gq._current_query,
+                    metatype="files",
+                    batch_num=gq._n_batch,
+                )
+
+            # update the n_batch in the query table
+            DBsession = MigrationDB.get_session()
+            with DBsession() as session, session.begin():
+                prepage = session.query(Query).order_by(Query.id.desc()).first()
+                if prepage is not None:
+                    prepage.n_datasets = gq._n_batch  # type: ignore[assignment]
+                    gq._n_batch = 0
+                else:
+                    raise ValueError("cannot find the previous page in the query table")
+
+            logger.info(f"Batch {gq._n_batch} ingested successfully for the page{page_num}")
+
+            if not production and (maxpage is not None) and page_num > maxpage:
                 break
 
     current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logger.info("query-ingest stop at " + current_timestr)
-    logger.info(f"Processing total pages {n}")
+    logger.info(f"Synchronization stop at {current_timestr}")
+    logger.info(f"Processed total pages: {page_num}")
+
     # clean up
     logging.shutdown()
     prov.successful = True

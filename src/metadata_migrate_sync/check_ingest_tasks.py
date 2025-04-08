@@ -1,11 +1,11 @@
-"""Check the status of ingest tasks
-"""
+"""Check the status of ingest tasks."""
 
 import pathlib
 from uuid import UUID
 
+from globus_sdk import GlobusAPIError
 from rich import print
-from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
+from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn
 
 from metadata_migrate_sync.database import Ingest, MigrationDB
 from metadata_migrate_sync.globus import GlobusClient
@@ -18,16 +18,18 @@ def check_ingest_tasks(*,
     update: bool = False,
 ) -> None:
     """Check the status of ingest tasks from the globus_index_name.
+
     1. only globus_index_name is required
     2. if task_id is not provided, then it means bulk checking,
-    all task_ids are from the database 
-    3. update is only for the bulk checking, to update the succeeded 
+    all task_ids are from the database
+    3. update is only for the bulk checking, to update the succeeded
     value in the ingest table and success value in the files/datasets
     table. If it is False, print the first 10 tasks and status
     """
     gc = GlobusClient()
 
-    target_index_name = "stage"
+    target_index_name = "stage"  # the app_client_id is needed and checkingg task_id
+                                 # need more privileges
     cm = gc.get_client(name = target_index_name)
 
     sc = cm.search_client
@@ -37,17 +39,14 @@ def check_ingest_tasks(*,
             print ("Please provide either task id or the migration database file")
             return None
 
-        if isinstance(db_file, str):
-            file_path = pathlib.Path(db_file)
-        else:
-            file_path = db_file
+        file_path = pathlib.Path(db_file) if isinstance(db_file, str) else db_file
 
         if file_path.exists():
 
             if update:
-                mdb = MigrationDB(str(file_path)+"?mode=ro", False)
+                _ = MigrationDB(str(file_path)+"?mode=ro", False)
             else:
-                mdb = MigrationDB(str(file_path), False)
+                _ = MigrationDB(str(file_path), False)
 
             updated_freq = 500
             page_size = 20
@@ -78,8 +77,8 @@ def check_ingest_tasks(*,
                              success=success_tasks,
                              ingest=ingest_tasks,
                              total_ingest=total_tasks,
-                         ) 
-                                 
+                         )
+
                          while True:
                              ingest = session.query(Ingest).filter_by(succeeded=0).order_by(Ingest.id)
 
@@ -97,11 +96,11 @@ def check_ingest_tasks(*,
                                          r = sc.get_task(item.task_id)
                                          if r.data["state"] == "SUCCESS":
                                              item.succeeded = 1
-                                             progress.update(task, advance=1, 
+                                             progress.update(task, advance=1,
                                                  success=progress.tasks[0].fields["success"] + 1)
                                          else:
-                                             progress.update(task, advance=1) 
-                                     except Exception as e:
+                                             progress.update(task, advance=1)
+                                     except GlobusAPIError as e:
                                          print(f"Error processing task {item.task_id}: {e}")
                                          progress.update(task, advance=1)
                                  else:
@@ -123,7 +122,7 @@ def check_ingest_tasks(*,
                             try:
                                 r = sc.get_task(task)
                                 print(r.data["task_id"], r.data["state"])
-                            except Exception as e:
+                            except GlobusAPIError as e:
                                 print(f"Error fetching task {task_id}: {e}")
 
         else:

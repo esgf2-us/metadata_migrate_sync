@@ -1,6 +1,4 @@
-""" 
-migrating the solr indexes in ORNL/LLNL/ANL to globus indexes (public and staged ones)
-"""
+"""migrate the solr indexes in ORNL/LLNL/ANL to globus indexes (public and staged ones)."""
 
 import logging
 import math
@@ -30,18 +28,10 @@ def metadata_migrate(
     project: ProjectReadOnly | ProjectReadWrite,
     production: bool,
 ) -> None:
-
+    """Migrate metadata/documents from solr indexes to the globus indexes."""
     # setup the provenance
 
-    if target_epname == "public" and production:
-        client_name = "prod-migration"
-        index_name = target_epname
-    elif target_epname == "stage" and production:
-        client_name = "prod-sync"
-        index_name = project.value
-    else:
-        client_name = "test"
-        index_name = "test"
+    client_name, index_name = GlobusClient.get_client_index_names(target_epname, project.value)
 
     prov = provenance(
         task_name="migrate",
@@ -62,13 +52,16 @@ def metadata_migrate(
 
     pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
 
-    logger = provenance._instance.get_logger(__name__)
+    logger = (
+        provenance._instance.get_logger(__name__) 
+        if provenance._instance is not None else logging.getLogger(__name__)
+    )
 
     logger.info(f"set up the provenance and save it to {prov.prov_file}")
     logger.info(f"log file is at {prov.log_file}")
 
     # database
-    mdb = MigrationDB(prov.db_file, True)
+    _ = MigrationDB(prov.db_file, True)
     logger.info(f"initialed the sqllite database at {prov.db_file}")
 
     # query generator
@@ -185,7 +178,7 @@ def metadata_migrate(
             if len(gmeta_ingest["ingest_data"]["gmeta"]) > 0:
                 ig.ingest(gmeta_ingest)
             else:
-                ig._response_data = None
+                ig._response_data = {}
                 ig._submitted = True
 
             ig.prov_collect(
@@ -195,13 +188,8 @@ def metadata_migrate(
                 metatype=metatype,
             )
 
-            # -if n % 300 == 0:
-            # -    MigrationDB.reinitdb()
-            # -    logger.info(f"reinit database at {n}")
-
-            if not production and (maxpage is not None):
-                if n > maxpage:
-                    break
+            if not production and (maxpage is not None) and n > maxpage:
+                break
 
     current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info("query-ingest stop at " + current_timestr)

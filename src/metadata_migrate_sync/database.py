@@ -16,7 +16,12 @@ from sqlalchemy.orm import (
     DeclarativeBase,
     relationship,
     sessionmaker,
+    Session,
 )
+
+import pathlib
+
+from typing import Any, ClassVar, Optional
 
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.provenance import provenance
@@ -128,15 +133,16 @@ class Files(Base):
 class MigrationDB:
     """it is a singleton class"""
 
-    _instance = None
-    def __new__(cls, *args, **kwargs):
+    _instance: ClassVar[Optional["MigrationDB"]] = None
+    initialized: bool
+    def __new__(cls, *args:Any, **kwargs:Any) -> "MigrationDB":
         if not cls._instance:
             cls._instance = super().__new__(cls)
             cls._instance.initialized = False
         return cls._instance
 
 
-    def __init__(self, db_filename: str, insert_index: bool):
+    def __init__(self, db_filename: str | pathlib.Path, insert_index: bool):
         if not self.initialized:
 
             self._DATABASE_URL = f"sqlite:///{db_filename}"
@@ -184,19 +190,11 @@ class MigrationDB:
                         session.add_all(index_list)
                         session.commit()
     @classmethod
-    def get_session(cls):
+    def get_session(cls) -> sessionmaker[Session]:
 
-        if not hasattr(cls._instance, "DBsession"):
+        if cls._instance is not None and not hasattr(cls._instance, "DBsession"):
             cls._instance.DBsession = sessionmaker(bind=cls._instance._engine)
-
+        else:
+            raise ValueError("database is not initialized")
 
         return cls._instance.DBsession
-
-    @classmethod
-    def reinitdb(cls):
-        cls._instance._engine.dispose()
-
-        db_filename = provenance._instance.db_file
-        cls._instance._engine = create_engine(f"sqlite:///{db_filename}")
-        cls._instance.DBsession = sessionmaker(bind=cls._instance._engine)
-

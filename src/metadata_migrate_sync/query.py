@@ -1,5 +1,6 @@
-"""query for solr and globus both"""
+"""query for solr and globus both."""
 
+import logging
 import json
 import sys
 import time
@@ -9,7 +10,7 @@ from uuid import UUID
 
 import requests
 from globus_sdk import GlobusAPIError, SearchQuery
-from pydantic import BaseModel
+from pydantic import AnyUrl, BaseModel
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError, RequestException, RetryError
 from urllib3 import Retry
@@ -18,6 +19,7 @@ from metadata_migrate_sync.database import Files, Index, Ingest, MigrationDB, Qu
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
+
 
 params_search = {
     "sort": "id asc",
@@ -28,7 +30,9 @@ params_search = {
 
 
 class BaseQuery(BaseModel):
-    end_point: str | UUID
+    """Query base model."""
+
+    end_point: str | UUID | AnyUrl
     ep_type: Literal["solr", "globus"]
     ep_name: str
     project: ProjectReadOnly | ProjectReadWrite
@@ -41,15 +45,13 @@ class SolrQuery(BaseQuery):
 
     _restart: bool = False
     _review: bool = False
-    _review_list: list[Any]
+    _review_list: list[Any] = []
 
     _current_query: Any | None = None
 
-    # _numFound: int
-
     def get_cursormark(self, review: bool = False) -> None:
         """Get the cursormark from the database file."""
-        logger = provenance._instance.get_logger(__name__)
+        logger = provenance._instance.get_logger(__name__) if provenance is not None else logging.getLogger()
         if review:
             # get all the failed cases in the database, re-query and re-ingest
 
@@ -57,8 +59,6 @@ class SolrQuery(BaseQuery):
             DBsession = MigrationDB.get_session()
             with DBsession() as session:
                 failed_ingests = session.query(Ingest).filter_by(succeeded=0).all()
-
-                failed_querys = failed_ingests.query
 
                 self._review_list = []
                 for ingest in failed_ingests:
@@ -130,6 +130,7 @@ class SolrQuery(BaseQuery):
         Args:
             url (str): The URL to make the request to.
             params (dict[str, Any]): Query parameters for the request.
+            is_test (bool): If it is a test
 
         Returns:
             dict[str, Any] | None: The JSON response if successful, None otherwise.
@@ -243,9 +244,12 @@ class SolrQuery(BaseQuery):
                 self.query["cursorMark"] = response_json.get("nextCursorMark")
 
     def prov_collect(
-        self, req_url: str, req_time: float, response: dict[Any, Any]
+        self,
+        req_url: str,
+        req_time: float,
+        response: dict[Any, Any],
     ) -> None:
-        """Collect prov and db"""
+        """Collect prov and db."""
         self._numFound = response.get("response").get("numFound")
 
         DBsession = MigrationDB.get_session()
@@ -313,15 +317,18 @@ class GlobusQuery(BaseQuery):
 
     query: dict[Any, Any]
     generator: bool = False
+    paginator: Literal["post", "scroll"]
+    skip_prov: bool = False
 
     _current_query: Any | None = None
-    _total_returned: int
+    _total_returned: int = 0
     _review: bool = False
     _restart: bool = False
 
-    _n_batch: int
+    _n_batch: int = 0
 
-    def get_offset(self, review:bool = False):
+    def get_offset(self, review:bool = False) -> None:
+        """Find the offset of previous sync."""
         logger = provenance._instance.get_logger(__name__)
 
         if review:
@@ -334,8 +341,14 @@ class GlobusQuery(BaseQuery):
 
                 last_query = session.query(Query).order_by(Query.id.desc()).first()
                 if last_query is None:  # new start
-                    self.query["offset"] = 0
                     self._current_query = None
+
+                    if self.paginator == "scroll":
+                        self.query.pop("marker", None)
+                        self.query.pop("premarker", None)
+
+                    else:
+                        self.query["offset"] = 0
 
                     logger.info("The query is new start")
                 else:
@@ -344,8 +357,12 @@ class GlobusQuery(BaseQuery):
                     ingest_obj = last_query.ingest
 
                     if len(ingest_obj) == 0:
-                        self.query["offset"] = int(last_query.cursorMark)
                         self._restart = True
+
+                        if self.paginator == "scroll":
+                            self.query["marker"] = last_query.cursorMark
+                        else:
+                            self.query["offset"] = int(last_query.cursorMark)
 
                         logger.info("The query is restart with no corresponding ingest")
                     else:
@@ -372,8 +389,12 @@ class GlobusQuery(BaseQuery):
 
                             logger.info(f"Delete failed file records {deleted_count}")
 
-                            self.query["offset"] = int(last_query.cursorMark)
                             self._restart = True
+
+                            if self.paginator == "scroll":
+                                self.query["marker"] = last_query.cursorMark
+                            else:
+                                self.query["offset"] = int(last_query.cursorMark)
 
                             logger.info("The query is restarted with cleaning recoreds")
 
@@ -400,8 +421,13 @@ class GlobusQuery(BaseQuery):
 
                                 logger.info(f"Delete failed file records {deleted_count}")
 
-                                self.query["offset"] = int(last_query.cursorMark)
                                 self._restart = True
+
+                                if self.paginator == "scroll":
+                                    self.query["marker"] = last_query.cursorMark
+                                else:
+                                    self.query["offset"] = int(last_query.cursorMark)
+
                                 logger.info("The query is restarted with cleaning recoreds (no possible)")
 
                                 session.commit()
@@ -409,27 +435,27 @@ class GlobusQuery(BaseQuery):
                                 self.query["offset"] = int(last_query.cursorMark_next)
                                 self._restart = False
 
+                                if self.paginator == "scroll":
+                                    self.query["marker"] = last_query.cursorMark_next
+                                else:
+                                    self.query["offset"] = int(last_query.cursorMark_next)
+
                                 logger.info(
                                     "The query is restart in the next cursormark"
                                 )
 
 
-    def run(self):
-        logger = provenance._instance.get_logger(__name__)
+    def run(self) -> Generator[Any, None, None]:
+        """Query the globus index in a pagination way."""
+        logger = (
+            provenance._instance.get_logger(__name__) 
+            if provenance._instance is not None else logging.getLogger(__name__)
+        )
 
-        if self.ep_name == "test":
-            client_name = "test"
-            index_name = self.ep_name
-        elif self.ep_name == "public" or self.ep_name == "public_old":
-            client_name = "public"
-            index_name = self.ep_name
-        else:
-            client_name = "stage"
-            index_name = self.project.value
-
+        client_name, index_name = GlobusClient.get_client_index_names(self.ep_name, self.project.value)
 
         gc = GlobusClient()
-        cm = gc.get_client(client_name)
+        cm = gc.get_client(self.ep_name)
         sc = cm.search_client
         sq = cm.search_query
 
@@ -438,65 +464,87 @@ class GlobusQuery(BaseQuery):
         if str(_globus_index_id) != str(self.end_point):
             raise ValueError("please give a right end point")
 
-        #sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
         for filter in self.query["filters"]:
             sq.add_filter(filter["field_name"], filter["values"], type=filter["type"])
 
         page_size = self.query["limit"]
-
         offset = self.query["offset"]
-        max_retries = 3
+
         total_returned = 0
 
 
-        sq.set_query("*").set_limit(page_size)
-        start = time.time()
-        for batch in sc.paginated.scroll(_globus_index_id, sq):
-            elapsed_time = time.time() - start
+        if self.paginator == "scroll":
+            sq.set_query("*").set_limit(page_size)
+            self.query["premarker"] = "*"
+            if "marker" in self.query and self.query["marker"] is not None:
+                sq["marker"] = self.query["marker"]
+                self.query["premarker"] = self.query["marker"]
+
             start = time.time()
+            for batch in sc.paginated.scroll(_globus_index_id, sq):
+                elapsed_time = time.time() - start
+                start = time.time()
 
-            entries = batch.data
-            total_returned += len(entries)
-            self._total_returned = total_returned
-            self.prov_collect(entries, elapsed_time, sq)
-            yield entries
+                entries = batch.data
+                total_returned += len(entries)
+                self._total_returned = total_returned
 
-        #-while True:
-        #-    retries = 0
-        #-    r = None
-        #-    while retries < max_retries:
-        #-        try:
-        #-            start = time.time()
-        #-            sq.set_query("*").set_limit(page_size).set_offset(offset)
-        #-            r = sc.post_search(_globus_index_id, sq)
-        #-            elapsed_time = time.time() - start
-        #-            break
+                if self.skip_prov:
+                    logger.info("skip the provenance and database update")
+                else:
+                    self.prov_collect(entries, elapsed_time, sq)
+                yield entries
 
-        #-        except GlobusAPIError as e:
-        #-            if e.http_status == 429:  # Rate limited
-        #-                retries += 1
-        #-                time.sleep(2 ** retries)  # Exponential backoff
-        #-                continue
-        #-            raise  # Re-raise other errors
+        if self.paginator == "post":
 
-        #-    if not r:
-        #-        break
+            max_retries = 3
+            while True:
+                retries = 0
+                r = None
+                while retries < max_retries:
+                    try:
+                        start = time.time()
+                        sq.set_query("*").set_limit(page_size).set_offset(offset)
+                        sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
 
-        #-    entries = r.data
+                        r = sc.post_search(_globus_index_id, sq)
+                        elapsed_time = time.time() - start
+                        break
 
-        #-    offset += page_size
-        #-    total_returned += len(entries)
-        #-    self._total_returned = total_returned
-        #-    self.prov_collect(entries, elapsed_time, sq)
+                    except GlobusAPIError as e:
+                        if e.http_status == 429:  # Rate limited
+                            retries += 1
+                            time.sleep(2 ** retries)  # Exponential backoff
+                            continue
+                        logger.error(f"Error happened in globus query: {e}")
+                        raise  # Re-raise other errors
 
-        #-    yield entries
+                if not r:
+                    break
 
-        #-    self.query["offset"] = offset
-        #-    if not r.data["has_next_page"]:
-        #-        break
+                entries = r.data
 
-    def prov_collect(self, entries:dict[Any, Any], req_time: float, sq: SearchQuery):
+                offset += page_size
+                total_returned += len(entries)
+                self._total_returned = total_returned
+                if self.skip_prov:
+                    logger.info("skip the provenance and database update")
+                else:
+                    self.prov_collect(entries, elapsed_time, sq)
 
+                yield entries
+
+                self.query["offset"] = offset
+                if not r.data["has_next_page"]:
+                    break
+
+    def prov_collect(
+        self,
+        entries: dict[Any, Any],
+        req_time: float,
+        sq: SearchQuery
+    ) -> None:
+        """Collect provenance and update database from a globus query."""
         logger = provenance._instance.get_logger(__name__)
         self._numFound = entries.get("total")
 
@@ -542,8 +590,10 @@ class GlobusQuery(BaseQuery):
                     n_files=len(entries.get("gmeta")),
                     pages=prepage.pages + 1 if prepage is not None else 1,
                     rows=self.query.get("limit"),
-                    cursorMark=str(self.query.get("offset")),
-                    cursorMark_next=str(self.query.get("offset")+self.query.get("limit")),
+                    cursorMark=self.query.get("premarker") if "marker" in entries else str(
+                        self.query.get("offset")),
+                    cursorMark_next=entries.get("marker") if "marker" in entries else str(
+                        self.query.get("offset")+self.query.get("limit")),
                     n_failed=0,
                     index=ind,
                     doc_size = len(json.dumps(entries)),
@@ -553,3 +603,8 @@ class GlobusQuery(BaseQuery):
                 session.commit()
                 curpage = session.query(Query).order_by(Query.id.desc()).first()
                 self._current_query = curpage
+
+                if "marker" in entries:
+                    self.query["premarker"] = entries.get("marker")
+
+            logger.info("Sucessfully update query table in the database")
