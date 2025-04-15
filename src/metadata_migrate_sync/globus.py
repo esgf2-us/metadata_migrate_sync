@@ -183,25 +183,38 @@ class GlobusClient:
 
     @staticmethod
     def get_client_index_names(
-        epname: Literal["public", "stage", "test", "all-prod"], 
+        epname: Literal["public", "stage", "test", "all-prod"],
         index_value: str | ProjectReadWrite = "test",
 ) -> tuple[str, str]:
 
-        if epname == "public":
-            client_name = "prod-migration"
-            index_name = "public"
-        elif epname == "stage":
-            client_name = "prod-sync"
-            index_name = value
-        elif epname == "all-prod":
-            client_name = "prod-all"
-            index_name = value
-        elif epname == "test":
-            client_name = "test"
-            index_name = "test"
+        match epname:
+            case "public":
+                client_name = "prod-migration"
+                index_name = "public"
+            case "public-old":
+                client_name = "prod-migration"
+                index_name = "public_old"
+            case "stage":
+                client_name = "prod-sync"
+                index_name = index_value
+            case "backup":
+                client_name = "prod-sync"
+                index_name = "backup"
+            case "all-prod":
+                client_name = "prod-all"
+                index_name = index_value
+            case "test":
+                client_name = "test"
+                index_name = "test"
+            case "test_1":
+                client_name = "test"
+                index_name = "test_1"
+            case _:
+                client_name = "test"
+                index_name = "test"
 
         return client_name, index_name
-    
+
     @classmethod
     def get_client(cls, name: str = "test") -> ClientModel:
 

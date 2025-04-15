@@ -4,7 +4,7 @@ import logging
 import math
 import pathlib
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Literal
 
 from pydantic import validate_call
@@ -16,6 +16,7 @@ from metadata_migrate_sync.ingest import GlobusIngest, generate_gmeta_list_globu
 from metadata_migrate_sync.project import ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.query import GlobusQuery
+from metadata_migrate_sync.util import get_last_value, get_utc_time_from_server
 
 
 class SyncConfig:
@@ -55,10 +56,12 @@ def _process_batches(
 @validate_call
 def metadata_sync(
     *,
-    source_epname: Literal["stage", "test"],
-    target_epname: Literal["public", "test"],
+    source_epname: Literal["stage", "test", "test_1"],
+    target_epname: Literal["public", "test", "test_1", "backup"],
     project: ProjectReadWrite,
     production: bool,
+    sync_freq: int | None = None,
+    start_time: datetime | None = None,
 ) -> None:
     """Sync the metadata between two Globus Indexes."""
     target_client, target_index = GlobusClient.get_client_index_names(target_epname, target_epname)
@@ -102,21 +105,12 @@ def metadata_sync(
     logger.info(f"initialed the sqllite database at {prov.db_file}")
 
     # query generator
-
     search_dict = {
         "filters":[
             {
                 "type": "match_all",
                 "field_name": "project",
                 "values": [project.value],
-            },
-            {
-                "type": "range",
-                "field_name": "_timestamp",
-                "values": [{
-                    "from": "*",
-                    "to": datetime.fromisoformat("2025-03-16").isoformat() + "Z",
-                }],
             },
         ],
         "sort_field": "id",
@@ -125,12 +119,67 @@ def metadata_sync(
         "offset": 0,
     }
 
+    time_cond = {
+        "type": "range",
+        "field_name": "_timestamp",
+        "values": [{
+            "from": "*",
+            "to": datetime.fromisoformat("2025-03-16").isoformat() + "Z",
+        }],
+    }
+
     if production:
         search_dict["limit"] = 1000
         maxpage = None
+
+        if sync_freq is not None:
+            prod_start = None
+            for day in [0, 1, 2]:
+                time_str = (datetime.now() - timedelta(days=day)).strftime("%Y-%m-%d")
+                prev_db = f"synchronization_{source_epname}_{target_epname}_{project.value}_{time_str}.sqlite"
+
+                print (day, prev_db)
+
+                if pathlib.Path(prev_db).is_file():
+                    query_str = get_last_value('query_str', "query", db_path=prev_db)
+
+                    print (query_str)
+
+                    if query_str:
+                        query_json = json.loads(query_str)
+
+                        for fi in query_json["filters"]:
+                            if (fi.get("type") == 'range' and
+                                fi.get("field_name") == "_timestamp"):
+                                prod_start = fi["values"][0]['to']
+                                break
+
+                if prod_start is not None:
+                    break
+
+            if prod_start is None:
+                if start_time is not None:
+                    prod_start = start_time.isoformat() + 'Z'
+                else:
+                    raise ValueError("Cannot find previous 3-day time filters,\
+                        please provide it by --start-time")
+
+            prod_end = get_utc_time_from_server()
+
+            time_cond = {
+                "type": "range",
+                "field_name": "_timestamp",
+                "values": [{
+                    "from": prod_start,
+                    "to": prod_end,
+                }],
+            }
     else:
         search_dict["limit"] = 20
         maxpage = 2
+
+
+    search_dict["filters"].append(time_cond)
 
     gq = GlobusQuery(
         end_point=prov.source_index_id,
@@ -141,7 +190,6 @@ def metadata_sync(
         generator=True,
         paginator="scroll",
     )
-
 
     # ingest
     ig = GlobusIngest(

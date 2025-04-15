@@ -1,21 +1,21 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import UUID
-
-from sqlalchemy.orm import object_session
 
 from globus_sdk import SearchClient
 from pydantic import (
     BaseModel,
     validate_call,
 )
+from sqlalchemy.orm import object_session
 
 from metadata_migrate_sync.database import Datasets, Files, Ingest, MigrationDB, Query
 from metadata_migrate_sync.globus import GlobusClient, GlobusIngestModel
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 
+import sys
 
 class BaseIngest(BaseModel):
     """ingestion base model."""
@@ -45,10 +45,14 @@ class GlobusIngest(BaseIngest):
         gc = GlobusClient.get_client(name=self.ep_name)
         sc = gc.search_client
 
-        if self.ep_name == "test" or self.ep_name == "public":
-            _globus_index_id = gc.indexes[self.ep_name]
+        #if self.ep_name == "test" or self.ep_name == "public":
+        #    _globus_index_id = gc.indexes[self.ep_name]
+        #else:
+        #    _globus_index_id = gc.indexes[self.project.value]
+        if self.ep_name == "stage":
+             _globus_index_id = gc.indexes[self.project.value]
         else:
-            _globus_index_id = gc.indexes[self.project.value]
+             _globus_index_id = gc.indexes[self.ep_name]
 
         if str(self.end_point) != str(_globus_index_id):
             logger.error("end_point is not consistent with ep_name")
@@ -190,6 +194,10 @@ def generate_gmeta_list(
             all_entries.append(doc)
             continue
 
+        #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        #-converted_doc["_timestamp"] = datetime.now(
+        #-     timezone.utc).isoformat().replace("+00:00", "Z")
+        
         gmeta_dict = {
             "id": metatype[:-1],
             "subject": converted_doc.get("id"),
@@ -219,6 +227,10 @@ def generate_gmeta_list_globus(
     gmeta_entries_skipped: list[dict[str, Any]] = []
 
     for g in gdoc["gmeta"]:
+
+        #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        #g["entries"][0]["content"]["_timestamp"] = datetime.now(
+        #     timezone.utc).isoformat().replace("+00:00", "Z")
 
         gmeta_dict = {
             "id": g["entries"][0]["entry_id"],

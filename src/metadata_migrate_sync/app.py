@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 """Main CLI interface to the ESGF-1.5 migration and synchronization tools.
 
 the subcommands are:
@@ -9,7 +9,6 @@ the subcommands are:
 """
 
 
-#!/usr/bin/env python
 
 import datetime
 import json
@@ -24,8 +23,9 @@ from metadata_migrate_sync.check_ingest_tasks import check_ingest_tasks
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
-from metadata_migrate_sync.sync import metadata_sync
 from metadata_migrate_sync.query import GlobusQuery
+from metadata_migrate_sync.sync import metadata_sync
+from metadata_migrate_sync.util import create_lock, release_lock
 
 sys.setrecursionlimit(10000)
 
@@ -53,13 +53,13 @@ def _validate_meta(meta: str) -> str:
 
 def _validate_src_ep(ep: str) -> str:
 
-    if ep not in ["ornl", "anl", "llnl", "stage"]:
+    if ep not in ["ornl", "anl", "llnl", "stage", "test_1", "test"]:
         raise typer.BadParameter(f"{ep} is not a supported ep")
     return ep
 
 
 def _validate_tgt_ep(ep: str) -> str:
-    if ep not in ["test", "public", "stage"]:
+    if ep not in ["test", "test_1", "public", "stage", "backup"]:
         raise typer.BadParameter(f"{ep} is not a supported ep ")
     return ep
 
@@ -101,7 +101,7 @@ def migrate(
     )
 
 def _validate_tgt_ep_all(ep: str) -> str:
-    if ep not in ["test", "public", "stage", "all-prod"]:
+    if ep not in ["test", "test_1", "public", "stage", "all-prod", "backup"]:
         raise typer.BadParameter(f"{ep} is not a supported ep ")
     return ep
 
@@ -153,17 +153,27 @@ def sync(
     ),
     project: str = typer.Argument(help="project name", callback=_validate_project),
     prod: bool = typer.Option(help="production run", default=False),
+    start_time: datetime.datetime = typer.Option(help="start time", default=None),
 ) -> None:
     """Sync the ESGF-1.5 staged indexes to the public index.
 
     Details can be seen in the design.md
     """
-    metadata_sync(
-        source_epname=source_ep,
-        target_epname=target_ep,
-        project=project,
-        production=prod,
-    )
+    lock_file_path = f"/tmp/metadata_migrate_sync_{project.value}.lock"
+
+    try:
+        lock_fd = create_lock(lock_file_path)
+
+        metadata_sync(
+            source_epname=source_ep,
+            target_epname=target_ep,
+            project=project,
+            production=prod,
+            sync_freq=5,
+            start_time=start_time,
+        )
+    finally:
+        release_lock(lock_fd, lock_file_path)
 
 
 @app.command()
@@ -193,10 +203,20 @@ def query_globus(
     marker: str = typer.Option("None", help="marker for scroll search"),
 ) -> None:
     """Search globus index with normal and scroll paginations."""
+    if "." not in order_by:
+        print ("please provide the correct order-by")
+        raise typer.Abort()
+
+    order_field = order_by.split('.')[0]
+    order = order_by.split('.')[1]
+    query = {"filters":[], "sort_field": order_field, "sort": order}
+
+    query["limit"] = limit
+    query["offset"] = offset
+
     if 'TO' not in time_range:
         print ("please provide a validate time range datetime-datetime")
         raise typer.Abort()
-
 
     start_time = time_range.split('TO')[0]
     if start_time == '':
@@ -220,20 +240,11 @@ def query_globus(
         "to": end_iso     # Less than or equal to end_date
          }]
     }
-
-    if "." not in order_by:
-        print ("please provide the correcit orderbu")
-        raise typer.Abort()
-
-    order_field = order_by.split('.')[0]
-    order = order_by.split('.')[1]
-
-    query = {"filters":[], "sort_field": order_field, "sort": order}
+    query["filters"].append(time_cond)
 
     if project is not None:
         proj_cond = {"type": "match_all", "field_name": "project", "values": [project.value]}
         query["filters"].append(proj_cond)
-    query["filters"].append(time_cond)
 
     kwargs = []
     if ctx.args:
@@ -259,38 +270,21 @@ def query_globus(
                         filter_cond = {"type": value_2, "field_name": key[2:], "value": value_1}
                     case "not":
                         filter_cond = {
-                                           "type": value_2,
-                                           "filter":
-                                           {
-                                                "type": "match_all",
-                                                "field_name": key[2:],
-                                                "values": [value_1],
-                                           },
-                                       }
+                            "type": value_2,
+                            "filter":{
+                                "type": "match_all",
+                                "field_name": key[2:],
+                                "values": [value_1],
+                            },
+                        }
                     case _:
                         filter_cond = {"type": value_2, "field_name": key[2:], "values": [value_1]}
             else:
                 filter_cond = {"type": "match_all", "field_name": key[2:], "values": [value]}
             query["filters"].append(filter_cond)
 
-    query["limit"] = limit
-    query["offset"] = offset
-
-
-    #-if globus_ep == "test":
-    #-    client_name = "test"
-    #-    index_name = globus_ep
-    #-elif globus_ep == "public" or globus_ep == "public_old":
-    #-    client_name = "public"
-    #-    index_name = globus_ep
-    #-else:
-    #-    client_name = "stage"
-    #-    index_name = project.value
-
     client_name, index_name = GlobusClient.get_client_index_names(globus_ep, project.value)
-
     _globus_index_id = GlobusClient.globus_clients[client_name].indexes[index_name]
-
 
     gq = GlobusQuery(
         end_point=_globus_index_id,
@@ -307,65 +301,38 @@ def query_globus(
     else:
         query.pop("marker", None)
 
-    
+
     for page_num, page in enumerate(gq.run()):
-        print (page["marker"])
-        if page_num >= 5:
+        if page_num >= 1:
             break
 
-    sys.exit()
+        if save is not None:
+            with open(save, "w") as f:
+                json.dump(page, f)
 
-    #-gc = GlobusClient()
-    #-cm = gc.get_client(client_name)
-    #-sc = cm.search_client
-    #-sq = cm.search_query
+        if printvar is not None:
+            for k, g in enumerate(page.get("gmeta")):
 
-    #-_globus_index_id = cm.indexes[index_name]
+                print_dict = {
+                    "total": page.get("total"),
+                    "subject": g["subject"],
+                }
 
-
-    #-sq.set_query("*").set_limit(query["limit"])
-    #-sq["filters"] = query["filters"]
-
-    #-if paginate == "post":
-    #-    sq.add_sort(query.get("sort_field"), order=query.get("sort")).set_offset(query["offset"])
-    #-    r = sc.post_search(_globus_index_id, sq)
-    #-elif paginate == "scroll":
-
-    #-    if marker is not None:
-    #-        sq["marker"] = marker
-
-    #-    i = 0
-    #-    for batch in sc.paginated.scroll(_globus_index_id, sq):
-    #-         r = batch
-    #-         i = i + 1
-    #-         print (r.data["marker"])
-
-    #-         if i >= 5:
-    #-             break
+                for var in printvar.split(','):
+                    if var in g["entries"][0]["content"]:
+                        print_dict.update({
+                            var: g["entries"][0]["content"][var],
+                        })
+                    elif var in page and var != "gmeta":
+                        print_dict.update({
+                            var: page[var],
+                        })
 
 
-    if save is not None:
-        with open(save, "w") as f:
-            json.dump(r.data, f)
+                print (json.dumps(print_dict))
 
-    if printvar is not None:
-        for k, g in enumerate(r.data.get("gmeta")):
-
-            print_dict = {
-                "total": r.data.get("total"),
-                "subject": g["subject"],
-            }
-
-            for var in printvar.split(','):
-                if var in g["entries"][0]["content"]:
-                    print_dict.update({
-                        var: g["entries"][0]["content"][var],
-                    })
-
-            print (json.dumps(print_dict))
-
-            if k >= 10:
-               break
+                if k >= 10:
+                   break
 
 @app.command()
 def check_task(
@@ -384,7 +351,8 @@ def check_task(
 @app.callback()
 def main(ctx: typer.Context) -> None:
     """Add the tip for more filter functions."""
-    if ctx.invoked_subcommand == "query-globus":
+    if ctx.invoked_subcommand == "query-globus" and (
+        "--help" in sys.argv or "-h" in sys.argv):
         print ("\n[bold red]Attention:[/bold red] more globus filters can " +
             "be applied by [green]--keyword=value::filter_option[/green]")
 

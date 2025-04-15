@@ -5,7 +5,7 @@ from metadata_migrate_sync.provenance import provenance
 
 
 def convert_to_esgf_1_5(
-    solr_doc: FileDocs | DatasetDocs | dict[str, Any], 
+    solr_doc: FileDocs | DatasetDocs | dict[str, Any],
     metatype: Literal["datasets", "files"]
 ) -> dict[Any, Any] | None:
 

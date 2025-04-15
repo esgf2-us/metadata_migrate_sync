@@ -34,12 +34,12 @@ class provenance(BaseModel, metaclass=SingletonMeta):
     task_name: Literal["migrate", "ingest", "sync"]
     source_index_id: str | UUID | AnyUrl
     source_index_type: Literal["solr", "globus"]
-    source_index_name: Literal["ornl", "anl", "llnl", "stage"]
+    source_index_name: Literal["ornl", "anl", "llnl", "stage", "test", "test_1"]
     source_index_schema: str = "solr"
 
     ingest_index_id: str | UUID
     ingest_index_type: Literal["solr", "globus"]
-    ingest_index_name: Literal["test", "public", "stage"]
+    ingest_index_name: Literal["test", "test_1", "public", "stage", "backup"]
     ingest_index_schema: str = "ESGF1.5"
     cmd_line: str
 

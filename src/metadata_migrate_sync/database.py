@@ -1,7 +1,9 @@
 """Sqlite database for index migrationa and sync
 """
 
+import pathlib
 from datetime import datetime
+from typing import Any, ClassVar, Optional
 
 from sqlalchemy import (
     Column,
@@ -14,14 +16,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import (
     DeclarativeBase,
+    Session,
     relationship,
     sessionmaker,
-    Session,
 )
-
-import pathlib
-
-from typing import Any, ClassVar, Optional
 
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.provenance import provenance
@@ -192,7 +190,7 @@ class MigrationDB:
     @classmethod
     def get_session(cls) -> sessionmaker[Session]:
 
-        if cls._instance is not None and not hasattr(cls._instance, "DBsession"):
+        if cls._instance is not None or (not hasattr(cls._instance, "DBsession")):
             cls._instance.DBsession = sessionmaker(bind=cls._instance._engine)
         else:
             raise ValueError("database is not initialized")

@@ -53,7 +53,7 @@ def metadata_migrate(
     pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
 
     logger = (
-        provenance._instance.get_logger(__name__) 
+        provenance._instance.get_logger(__name__)
         if provenance._instance is not None else logging.getLogger(__name__)
     )
 

@@ -1,7 +1,7 @@
 """query for solr and globus both."""
 
-import logging
 import json
+import logging
 import sys
 import time
 from collections.abc import Generator
@@ -19,7 +19,6 @@ from metadata_migrate_sync.database import Files, Index, Ingest, MigrationDB, Qu
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
-
 
 params_search = {
     "sort": "id asc",
@@ -340,7 +339,12 @@ class GlobusQuery(BaseQuery):
             with DBsession() as session:
 
                 last_query = session.query(Query).order_by(Query.id.desc()).first()
-                if last_query is None:  # new start
+
+
+                if last_query:
+                    query_dict= json.loads(last_query.query_str)
+
+                if last_query is None or query_dict["filters"] != self.query["filters"]:  # new start
                     self._current_query = None
 
                     if self.paginator == "scroll":
@@ -448,7 +452,7 @@ class GlobusQuery(BaseQuery):
     def run(self) -> Generator[Any, None, None]:
         """Query the globus index in a pagination way."""
         logger = (
-            provenance._instance.get_logger(__name__) 
+            provenance._instance.get_logger(__name__)
             if provenance._instance is not None else logging.getLogger(__name__)
         )
 
@@ -563,9 +567,11 @@ class GlobusQuery(BaseQuery):
                 self._restart = False
 
             else:
+
+                my_index_name = self.project.value if self.ep_name == "stage" else self.ep_name
                 ind = (
                     session.query(Index)
-                    .filter(Index.index_name == self.project.value)
+                    .filter(Index.index_name == my_index_name)
                     .first()
                 )
                 prepage = session.query(Query).order_by(Query.id.desc()).first()
@@ -581,7 +587,7 @@ class GlobusQuery(BaseQuery):
                         if isinstance(self.project, ProjectReadOnly)
                         else "readwrite"
                     ),
-                    query_str=json.dumps(sq.__dict__),
+                    query_str=json.dumps(sq.__dict__["data"]),
                     query_type="globus",
                     query_time=req_time,
                     date_range=date_range,

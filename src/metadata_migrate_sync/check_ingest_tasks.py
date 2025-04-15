@@ -28,7 +28,7 @@ def check_ingest_tasks(*,
     """
     gc = GlobusClient()
 
-    target_index_name = "stage"  # the app_client_id is needed and checkingg task_id
+    target_index_name = "test"  # the app_client_id is needed and checkingg task_id
                                  # need more privileges
     cm = gc.get_client(name = target_index_name)
 
