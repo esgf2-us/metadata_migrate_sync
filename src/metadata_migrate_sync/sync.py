@@ -164,7 +164,7 @@ def metadata_sync(
                     raise ValueError("Cannot find previous 3-day time filters,\
                         please provide it by --start-time")
 
-            prod_end = get_utc_time_from_server()
+            prod_end = get_utc_time_from_server(ahead_minutes=15)
 
             time_cond = {
                 "type": "range",
