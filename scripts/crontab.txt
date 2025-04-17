@@ -1,0 +1,5 @@
+*/5 * * * * /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/scripts/prod_sync_cmip6plus.sh >> /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/cron_cmip6plus.log 2>&1
+*/5 * * * * /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/scripts/prod_sync_drcdp.sh >> /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/cron_drcdp.log 2>&1
+*/5 * * * * /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/scripts/prod_sync_input4mips.sh >> /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/cron_input4mips.log 2>&1
+*/5 * * * * /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/scripts/prod_sync_obs4mips.sh >> /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/cron_obs4mips.log 2>&1
+*/5 * * * * /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/scripts/prod_sync_e3sm.sh >> /home/minxu/work/MyGit/MySrc/metadata_migrate_sync_dev/cron_e3sm.log 2>&1
