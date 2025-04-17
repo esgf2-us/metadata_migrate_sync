@@ -1,3 +1,4 @@
+"""Provenance module."""
 import logging
 import logging.config
 import os
@@ -5,7 +6,7 @@ import pathlib
 import platform
 import sys
 from importlib.metadata import distributions
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import AnyUrl, BaseModel
@@ -13,23 +14,21 @@ from pydantic._internal._model_construction import ModelMetaclass
 
 
 class SingletonMeta(ModelMetaclass):
-    """Metaclass to enforce singleton behavior while preserving Pydantic's functionality.
-    """
+    """Metaclass to enforce singleton behavior while preserving Pydantic's functionality."""
 
     _instance = None
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any):  # noqa ANN204 D102
         if not cls._instance:
             cls._instance = super().__call__(*args, **kwargs)
         return cls._instance
 
 
 class provenance(BaseModel, metaclass=SingletonMeta):
-    """provenance class for the meta data ingest and sync
+    """provenance class for the meta data ingest and sync.
+
     it is a singleton instance
     """
-
-    #_log_file: ClassVar[str] = "test_pov.log"
 
     task_name: Literal["migrate", "ingest", "sync"]
     source_index_id: str | UUID | AnyUrl
@@ -49,17 +48,6 @@ class provenance(BaseModel, metaclass=SingletonMeta):
 
     successful: bool = False
 
-    #source_index_query: str | None = None
-    #type_query: Literal["Datasets", "Files"] = "Datasets"
-    #success_query: bool = False
-
-    #timestamp_query: datetime | None = None
-    #time_query: float | None = None
-    #pass_validate_query: bool = False
-
-    #pass_validate_ingest: bool = False
-    #timestamp_ingest: datetime | None = None
-
     operation_system: str = platform.platform()
 
     os_environment: dict[str, str | None] = {
@@ -73,33 +61,10 @@ class provenance(BaseModel, metaclass=SingletonMeta):
         p.metadata["Name"]: p.version for p in distributions()
     }
 
-    #-_instance = None  # Class variable to store the singleton instance
-
-    #-def __new__(cls, *args, **kwargs):
-    #-    """
-    #-    Override __new__ to ensure only one instance is created.
-    #-    """
-    #-    if cls._instance is None:
-    #-        cls._instance = super().__new__(cls)
-    #-    return cls._instance
-
-    #-def __init__(self, **data):
-    #-    """
-    #-    Override __init__ to avoid reinitialization of the singleton instance.
-    #-    """
-    #-    if not hasattr(self, "initialized"):
-    #-        super().__init__(**data)
-    #-        self.initialized = True
-
-
     @classmethod
     def get_logger(cls, name:str) -> logging.Logger:
-
-        if cls._instance is None:
-            log_filename = "test.log"
-
-        else:
-            log_filename = cls._instance.log_file
+        """Get a logger handler."""
+        log_filename = "test.log" if cls._instance is None else cls._instance.log_file
 
         logging_config = {
             "version": 1,

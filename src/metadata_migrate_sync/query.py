@@ -224,7 +224,6 @@ class SolrQuery(BaseQuery):
 
             docs = response_json.get("response", {}).get("docs", [])
             yield docs
-            #yield from self._process_response(response_json)
 
             # Check if this is the last page
             if self.query["cursorMark"] == response_json.get("nextCursorMark"):

@@ -138,12 +138,12 @@ def metadata_sync(
                 time_str = (datetime.now() - timedelta(days=day)).strftime("%Y-%m-%d")
                 prev_db = f"synchronization_{source_epname}_{target_epname}_{project.value}_{time_str}.sqlite"
 
-                print (day, prev_db)
+                logger.info(f"find the previous {day} database file {prev_db}")
 
                 if pathlib.Path(prev_db).is_file():
                     query_str = get_last_value('query_str', "query", db_path=prev_db)
 
-                    print (query_str)
+                    logger.info(f"find the query string {query_str} in the database")
 
                     if query_str:
                         query_json = json.loads(query_str)
@@ -260,11 +260,6 @@ def metadata_sync(
                 batches = _process_batches(gmeta_list, SyncConfig.PROD_MAX_INGEST_SIZE)
             else:
                 batches = _process_batches(gmeta_list, SyncConfig.TEST_MAX_INGEST_SIZE)
-
-            #-for b in batches:
-            #-     print (b)
-            #-     break
-            #-print (len(batches))
 
             for n_batch, batch in enumerate(batches, start=1):
 

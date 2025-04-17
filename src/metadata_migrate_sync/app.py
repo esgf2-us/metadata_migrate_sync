@@ -159,7 +159,7 @@ def sync(
 
     Details can be seen in the design.md
     """
-    lock_file_path = f"/tmp/metadata_migrate_sync_{project.value}.lock"
+    lock_file_path = f"/tmp/metadata_migrate_sync_{project.value}.lock"  # noqa S108
 
     try:
         lock_fd = create_lock(lock_file_path)

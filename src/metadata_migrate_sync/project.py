@@ -1,3 +1,4 @@
+"""Define the enum string constants for the projects that we support."""
 from enum import Enum
 
 # change.md #3a78b9f
@@ -11,7 +12,7 @@ from enum import Enum
 
 
 class ProjectReadOnly(str, Enum):
-    """read-only projects"""
+    """read-only projects."""
 
     CMIP3 = "CMIP3"
     CMIP5 = "CMIP5"
@@ -28,7 +29,7 @@ class ProjectReadOnly(str, Enum):
 
 
 class ProjectReadWrite(str, Enum):
-    """read-write projects"""
+    """read-write projects."""
 
     CMIP6PLUS = "CMIP6Plus"
     DRCDP = "DRCDP"

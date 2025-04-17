@@ -1,5 +1,4 @@
-"""Sqlite database for index migrationa and sync
-"""
+"""Sqlite database for index migrationa and sync."""
 
 import pathlib
 from datetime import datetime
@@ -129,7 +128,7 @@ class Files(Base):
 
 
 class MigrationDB:
-    """it is a singleton class"""
+    """it is a singleton class."""
 
     _instance: ClassVar[Optional["MigrationDB"]] = None
     initialized: bool
@@ -189,7 +188,7 @@ class MigrationDB:
                         session.commit()
     @classmethod
     def get_session(cls) -> sessionmaker[Session]:
-
+        """Get the database session."""
         if cls._instance is not None or (not hasattr(cls._instance, "DBsession")):
             cls._instance.DBsession = sessionmaker(bind=cls._instance._engine)
         else:

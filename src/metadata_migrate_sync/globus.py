@@ -1,3 +1,4 @@
+"""Globus index handlers and CVs and methods."""
 import pathlib
 from enum import Enum
 from typing import Any, Literal
@@ -59,7 +60,7 @@ class GlobusIngestModel(BaseModel):
 
 # from Lucasz and Nate code with some minor changes
 def get_authorized_search_client(
-    app_client_id: UUID | str, token_name: str = "token.json"
+    app_client_id: UUID | str, token_name: str = "token.json"  # noqa S107
 ) -> SearchClient:
     """Return a transfer client authorized to make transfers."""
     config_path = pathlib.Path.home() / ".ssh"

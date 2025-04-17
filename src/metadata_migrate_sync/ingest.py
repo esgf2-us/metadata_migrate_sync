@@ -1,5 +1,6 @@
+"""Ingest module."""
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -15,7 +16,6 @@ from metadata_migrate_sync.globus import GlobusClient, GlobusIngestModel
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 
-import sys
 
 class BaseIngest(BaseModel):
     """ingestion base model."""
@@ -45,10 +45,6 @@ class GlobusIngest(BaseIngest):
         gc = GlobusClient.get_client(name=self.ep_name)
         sc = gc.search_client
 
-        #if self.ep_name == "test" or self.ep_name == "public":
-        #    _globus_index_id = gc.indexes[self.ep_name]
-        #else:
-        #    _globus_index_id = gc.indexes[self.project.value]
         if self.ep_name == "stage":
              _globus_index_id = gc.indexes[self.project.value]
         else:
@@ -78,7 +74,7 @@ class GlobusIngest(BaseIngest):
         self,
         docs: list[dict[str, Any]],
         review: bool,
-        current_query: Any,
+        current_query: Any,  # noqa ANN401
         metatype: Literal["files", "datasets"],
         batch_num: int = -1,
     ) -> None:
@@ -197,7 +193,7 @@ def generate_gmeta_list(
         #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
         #-converted_doc["_timestamp"] = datetime.now(
         #-     timezone.utc).isoformat().replace("+00:00", "Z")
-        
+
         gmeta_dict = {
             "id": metatype[:-1],
             "subject": converted_doc.get("id"),

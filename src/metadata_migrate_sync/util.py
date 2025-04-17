@@ -1,3 +1,4 @@
+"""Utility tools."""
 import datetime
 import fcntl
 import os
@@ -50,16 +51,10 @@ def get_utc_time_from_server(ahead_minutes: int = 3) -> str:
         client = ntplib.NTPClient()
         response = client.request("pool.ntp.org")
         cur_time =  datetime.datetime.fromtimestamp(response.tx_time, datetime.timezone.utc)
-    except:
+    except requests.RequestException:
         cur_time =  datetime.datetime.now(datetime.timezone.utc)  # Local fallback
         for api in apis:
             try:
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
-                          (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                    "Accept": "application/json",
-                }
-
                 response = requests.get(api, timeout=5)
                 data = response.json()
 
