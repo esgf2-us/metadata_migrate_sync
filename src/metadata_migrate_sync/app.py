@@ -286,6 +286,15 @@ def query_globus(
     client_name, index_name = GlobusClient.get_client_index_names(globus_ep, project.value)
     _globus_index_id = GlobusClient.globus_clients[client_name].indexes[index_name]
 
+    print ('yyyyyyy', query)
+
+    if marker != "None" and paginator == "scroll":
+        query["marker"] = marker
+    else:
+        query.pop("marker", None)
+
+    print ('xxxxxxx', query)
+
     gq = GlobusQuery(
         end_point=_globus_index_id,
         ep_type="globus",
@@ -296,14 +305,9 @@ def query_globus(
         paginator=paginator,
         skip_prov=True,
     )
-    if marker is not None and paginator == "scroll":
-        query["marker"] = marker
-    else:
-        query.pop("marker", None)
-
 
     for page_num, page in enumerate(gq.run()):
-        if page_num >= 1:
+        if page_num >= 10:
             break
 
         if save is not None:

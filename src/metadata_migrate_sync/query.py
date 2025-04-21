@@ -122,8 +122,10 @@ class SolrQuery(BaseQuery):
 
     @staticmethod
     def _make_request(
-        url: str, params: dict[str, Any], is_test: bool = False
-    ) -> tuple[Any, Any, Any] | None | int:
+        url: str, 
+        params: dict[str, Any], 
+        is_test: bool = False
+    ) -> tuple[dict[str, Any], float, str] | None | int:
         """Make an HTTP GET request with retry logic.
 
         Args:
@@ -132,7 +134,9 @@ class SolrQuery(BaseQuery):
             is_test (bool): If it is a test
 
         Returns:
-            dict[str, Any] | None: The JSON response if successful, None otherwise.
+            Tuple of (response JSON, response time, URL) if successful and not test,
+            status code if test,
+            None if request failed.
 
         """
         logger = provenance.get_logger(__name__)
@@ -168,41 +172,6 @@ class SolrQuery(BaseQuery):
         except RequestException as e:
             logger.error(f"Request failed at {url}: {e}")
             return None
-
-    def _process_response(
-        self, response_json: dict[str, Any]
-    ) -> Generator[Any, None, None]:
-        """Process the JSON response and yield the results.
-
-        Args:
-            response_json (dict[str, Any]): The JSON response from the API.
-
-        Yields:
-            Generator[Any, None, None]: The documents from the response.
-
-        """
-        logger = provenance.get_logger(__name__)
-
-        docs = response_json.get("response", {}).get("docs", [])
-        yield docs
-
-        # Check if this is the last page
-        if self.query["cursorMark"] == response_json.get("nextCursorMark"):
-            logger.info("Reached the last page.")
-            return
-
-        # Get the next page in the review mode
-        if self._review:
-            if not self._review_list:
-                logger.info("No more pages to review.")
-                return
-            self._review_page, self._review_cursor = self._review_list.pop()
-            self.query["cursorMark"] = self._review_cursor
-        else:
-            self.query["cursorMark"] = response_json.get("nextCursorMark")
-
-        # Continue processing the next page
-        yield from self.run()
 
     def run(self) -> Generator[Any, None, None]:
         """Query solr index in a paginated manner.
@@ -325,8 +294,8 @@ class GlobusQuery(BaseQuery):
 
     _n_batch: int = 0
 
-    def get_offset(self, review:bool = False) -> None:
-        """Find the offset of previous sync."""
+    def get_offset_marker(self, review:bool = False) -> None:
+        """Find the offset or marker of previous synchronization."""
         logger = provenance._instance.get_logger(__name__)
 
         if review:
@@ -353,7 +322,7 @@ class GlobusQuery(BaseQuery):
                     else:
                         self.query["offset"] = 0
 
-                    logger.info("The query is new start")
+                    logger.info("The query is a new start")
                 else:
 
                     self._current_query = last_query
@@ -367,7 +336,9 @@ class GlobusQuery(BaseQuery):
                         else:
                             self.query["offset"] = int(last_query.cursorMark)
 
-                        logger.info("The query is restart with no corresponding ingest")
+                        logger.info(
+                            f"The query is restart with no corresponding ingest at {last_query.cursorMark}"
+                        )
                     else:
                         filter_ingest = [
                             ing for ing in ingest_obj if ing.pages == last_query.pages
@@ -399,7 +370,9 @@ class GlobusQuery(BaseQuery):
                             else:
                                 self.query["offset"] = int(last_query.cursorMark)
 
-                            logger.info("The query is restarted with cleaning recoreds")
+                            logger.info(
+                                f"The query is restarted with cleaning recoreds at {last_query.cursorMark}"
+                            )
 
                             session.commit()
                         else:
@@ -479,6 +452,7 @@ class GlobusQuery(BaseQuery):
         if self.paginator == "scroll":
             sq.set_query("*").set_limit(page_size)
             self.query["premarker"] = "*"
+
             if "marker" in self.query and self.query["marker"] is not None:
                 sq["marker"] = self.query["marker"]
                 self.query["premarker"] = self.query["marker"]
@@ -552,6 +526,10 @@ class GlobusQuery(BaseQuery):
         self._numFound = entries.get("total")
 
 
+        if not entries:
+            logger.warning("No entries provided for provenance collection")
+            return
+
         DBsession = MigrationDB.get_session()
         with DBsession() as session:
 
@@ -575,6 +553,7 @@ class GlobusQuery(BaseQuery):
                 )
                 prepage = session.query(Query).order_by(Query.id.desc()).first()
 
+                date_range = "[{'from':'*', 'to':'*'}]"
                 for f in self.query["filters"]:
                     if f["field_name"] == "_timestamp":
                         date_range = json.dumps(f["values"])

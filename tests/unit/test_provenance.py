@@ -12,11 +12,14 @@ def task_info():
         "task_name": "migrate",
         "source_index_id": "esgf-node.ornl.gov",
         "source_index_type": "solr",
+        "source_index_name": "ornl",
         "source_index_schema": "solr",
         "ingest_index_id": "c123975a-246d-421f-8819-4659edf91e44",
         "ingest_index_type": "globus",
+        "ingest_index_name": "test",
         "ingest_index_schema": "ESGF1.5",
         "log_file": "test_prov.log",
+        "cmd_line": "test_cmd.exe",
     }
 
 def test_provenance_prov(task_info):

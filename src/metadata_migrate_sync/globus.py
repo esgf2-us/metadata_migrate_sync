@@ -78,11 +78,15 @@ def get_authorized_search_client(
         authorize_url = app_client.oauth2_get_authorize_url()
         print(
             f"""
-All interactions with Globus must be authorized. To ensure that we have permission to faciliate your transfer, please open the following link in your browser.
+All interactions with Globus must be authorized. To ensure that we have permission to faciliate your transfer,
+please open the following link in your browser.
 
 {authorize_url}
 
-You will have to login (or be logged in) to your Globus account. Globus will also request that you give a label for this authorization. You may pick anything of your choosing. After following the instructions in your browser, Globus will generate a code which you must copy and paste here and then hit <enter>.\n"""
+You will have to login (or be logged in) to your Globus account.
+Globus will also request that you give a label for this authorization.
+You may pick anything of your choosing. After following the instructions in your browser,
+Globus will generate a code which you must copy and paste here and then hit <enter>.\n"""
         )
         auth_code = input("> ").strip()
         token_response = app_client.oauth2_exchange_code_for_tokens(auth_code)
@@ -111,6 +115,7 @@ class ClientModel(BaseModel):
     indexes: dict[str, UUID]
 
     def list_index(self) -> dict[str, Any]:
+        """List the Globus index."""
         index_dict = {}
         for name, index in self.indexes.items():
             r = self.search_client.get_index(index)
@@ -187,7 +192,7 @@ class GlobusClient:
         epname: Literal["public", "stage", "test", "all-prod"],
         index_value: str | ProjectReadWrite = "test",
 ) -> tuple[str, str]:
-
+        """Get the client and index names using endpoint name (epname)."""
         match epname:
             case "public":
                 client_name = "prod-migration"
@@ -218,6 +223,7 @@ class GlobusClient:
 
     @classmethod
     def get_client(cls, name: str = "test") -> ClientModel:
+        """Get the search client and index list."""
 
         logger = provenance.get_logger(__name__)
 

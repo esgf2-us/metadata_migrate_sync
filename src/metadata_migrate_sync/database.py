@@ -27,10 +27,12 @@ from metadata_migrate_sync.solr import SolrIndexes
 
 # Create a base class for models
 class Base(DeclarativeBase):
+    """The base class for the migration database"""
     pass
 
 
 class Index(Base):
+    """The index table class."""
     __tablename__ = "index"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -43,6 +45,7 @@ class Index(Base):
 
 
 class Query(Base):
+    """The query table class."""
     __tablename__ = "query"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -59,7 +62,7 @@ class Query(Base):
     date_range = Column(String)
 
     query_datetime = Column(DateTime, default=datetime.utcnow)
-    numFound = Column(String)
+    numFound = Column(String)   # noqa N815
     n_datasets = Column(Integer)
     n_files = Column(Integer)
 
@@ -69,14 +72,15 @@ class Query(Base):
     files = relationship("Files", back_populates="query")
 
     rows = Column(Integer)
-    cursorMark = Column(String)
-    cursorMark_next = Column(String)
+    cursorMark = Column(String)   # noqa N815
+    cursorMark_next = Column(String) # noqa N815
     n_failed = Column(Integer, default=0)
     doc_size = Column(Integer)
 
 
 # success and n_failed are updated in the check code
 class Ingest(Base):
+    """The ingest table class."""
     __tablename__ = "ingest"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -100,6 +104,7 @@ class Ingest(Base):
 
 
 class Datasets(Base):
+    """The dataset table class."""
     __tablename__ = "datasets"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -114,6 +119,7 @@ class Datasets(Base):
 
 
 class Files(Base):
+    """The file table class."""
     __tablename__ = "files"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -132,7 +138,7 @@ class MigrationDB:
 
     _instance: ClassVar[Optional["MigrationDB"]] = None
     initialized: bool
-    def __new__(cls, *args:Any, **kwargs:Any) -> "MigrationDB":
+    def __new__(cls, *args:Any, **kwargs:Any) -> "MigrationDB":  # noqa D102
         if not cls._instance:
             cls._instance = super().__new__(cls)
             cls._instance.initialized = False

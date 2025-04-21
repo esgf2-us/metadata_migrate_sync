@@ -35,7 +35,7 @@ def _process_batches(
 ) -> list[list[dict[str, Any]]]:
     """Process a batch of GMeta entries with size limits."""
     batches = []
-    current_batch:list[dict[str,Any]] = []
+    current_batch: list[dict[str,Any]] = []
     current_size = 0
 
     for gmeta in gmeta_list:
@@ -51,6 +51,83 @@ def _process_batches(
         batches.append(current_batch)
 
     return batches
+
+
+def _get_time_range_filter(*, time_from: str, time_to: str) -> dict[str, Any]:
+
+    return {
+        "type": "range",
+        "field_name": "_timestamp",
+        "values": [{
+            "from": time_from,
+            "to": time_to,
+        }],
+    }
+
+def _setup_time_range_filter(
+    path_db_base: str,
+    production: bool,
+    sync_freq: int | None,
+    start_time: datetime | None,
+    logger: logging.Logger,
+    data_dir: str = "./",
+) -> dict[str, dict[str, Any] | None]:
+    """Set up the time range filter for the query."""
+    if not production or sync_freq is None:
+        return {
+            "restart": None,
+            "normal": _get_time_range_filter(
+                          time_from = get_utc_time_from_server(ahead_minutes=20),
+                          time_to   = get_utc_time_from_server(ahead_minutes=15),
+                      )
+        }
+
+    # Production mode with sync frequency
+
+    time_range: dict[str, dict[str, Any] | None] = {"restart": None, "normal": {}}
+    prod_start = None
+    for day in [0, 1, 2]:
+        time_str = (datetime.now() - timedelta(days=day)).strftime("%Y-%m-%d")
+        path_db = f"{path_db_base}_{time_str}.sqlite"
+        prev_db = pathlib.Path(data_dir) / path_db
+
+        logger.info(f"Looking for previous database file {prev_db}")
+
+        if pathlib.Path(prev_db).is_file():
+            query_str = get_last_value('query_str', "query", db_path=prev_db)
+
+            cursorMark_next = get_last_value('cursorMark_next', "query", db_path=prev_db)
+
+
+            if query_str:
+                query_json = json.loads(query_str)
+                for fi in query_json["filters"]:
+                    if (fi.get("type") == 'range' and fi.get("field_name") == "_timestamp"):
+                        time_range["restart"] = fi
+                        prod_start = fi["values"][0]['to']
+                        break
+
+            if cursorMark_next and cursorMark_next == "end of this query":
+                time_range["restart"] = None
+            if prod_start is not None:
+                break
+
+    if prod_start is None:
+        time_range["restart"] = None
+        if start_time is not None:
+            prod_start = start_time.isoformat() + 'Z'
+        else:
+            raise ValueError(
+                "Cannot find previous 3-day time filters, please provide it by --start-time"
+            )
+
+    prod_end = get_utc_time_from_server(ahead_minutes=15)
+
+    time_range["normal"] =  _get_time_range_filter(
+                                time_from = prod_start,
+                                time_to   = prod_end,
+    )
+    return time_range
 
 
 @validate_call
@@ -102,7 +179,7 @@ def metadata_sync(
 
     # database
     _ = MigrationDB(prov.db_file, True)
-    logger.info(f"initialed the sqllite database at {prov.db_file}")
+    logger.info(f"initialized the sqlite database at {prov.db_file}")
 
     # query generator
     search_dict = {
@@ -119,67 +196,25 @@ def metadata_sync(
         "offset": 0,
     }
 
-    time_cond = {
-        "type": "range",
-        "field_name": "_timestamp",
-        "values": [{
-            "from": "*",
-            "to": datetime.fromisoformat("2025-03-16").isoformat() + "Z",
-        }],
-    }
+
+    path_db_base = f"synchronization_{source_epname}_{target_epname}_{project.value}"   #_{time_str}.sqlite"
+    time_range_filter = _setup_time_range_filter(
+        path_db_base,
+        production,
+        sync_freq,
+        start_time,
+        logger,
+    )
+
 
     if production:
         search_dict["limit"] = 1000
         maxpage = None
-
-        if sync_freq is not None:
-            prod_start = None
-            for day in [0, 1, 2]:
-                time_str = (datetime.now() - timedelta(days=day)).strftime("%Y-%m-%d")
-                prev_db = f"synchronization_{source_epname}_{target_epname}_{project.value}_{time_str}.sqlite"
-
-                logger.info(f"find the previous {day} database file {prev_db}")
-
-                if pathlib.Path(prev_db).is_file():
-                    query_str = get_last_value('query_str', "query", db_path=prev_db)
-
-                    logger.info(f"find the query string {query_str} in the database")
-
-                    if query_str:
-                        query_json = json.loads(query_str)
-
-                        for fi in query_json["filters"]:
-                            if (fi.get("type") == 'range' and
-                                fi.get("field_name") == "_timestamp"):
-                                prod_start = fi["values"][0]['to']
-                                break
-
-                if prod_start is not None:
-                    break
-
-            if prod_start is None:
-                if start_time is not None:
-                    prod_start = start_time.isoformat() + 'Z'
-                else:
-                    raise ValueError("Cannot find previous 3-day time filters,\
-                        please provide it by --start-time")
-
-            prod_end = get_utc_time_from_server(ahead_minutes=15)
-
-            time_cond = {
-                "type": "range",
-                "field_name": "_timestamp",
-                "values": [{
-                    "from": prod_start,
-                    "to": prod_end,
-                }],
-            }
     else:
         search_dict["limit"] = 20
         maxpage = 2
 
 
-    search_dict["filters"].append(time_cond)
 
     gq = GlobusQuery(
         end_point=prov.source_index_id,
@@ -200,104 +235,121 @@ def metadata_sync(
 
     logger.info("instantiate query and ingest classes")
 
-    # set the initial cursormark
-    gq.get_offset(review=False)
-    logger.info("find the offset at " + str(gq.query["offset"]))
 
-    current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logger.info("query-ingest start at " + current_timestr)
+    for step in ["restart", "normal"]:
 
-    with tqdm(
-        gq.run(),
-        desc="Processing",
-        unit="page",
-        colour="blue",
-        bar_format="{l_bar}{bar:50}{r_bar}",
-        ncols=100,
-        ascii=" ░▒▓█",
-    ) as pbar:
+        if step == "restart" and (not production or time_range_filter[step] is None):
+            continue
 
-        for page_num, page in enumerate(pbar):
-            if not pbar.total and hasattr(gq, "_numFound") and gq._numFound:
-                pbar.total = math.ceil(gq._numFound / gq.query["limit"])
+        search_dict["filters"].append(time_range_filter[step])
 
-            if len(page) == 0:
-                logger.info(f"Empty page {page_num}. stop sync!")
-                break
+        # set the initial cursormark
+        gq.get_offset_marker(review=False)
+        logger.info("find the offset at " + str(gq.query["offset"]))
 
-            gmeta_ingest, gmeta_ingest_skipped = generate_gmeta_list_globus(page)
+        current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        logger.info("query-ingest start at " + current_timestr + f"step: {step} {time_range_filter[step]}")
 
-            gq._n_batch = 0
-            # record the skipped entries
-            if len(
-                   gmeta_ingest_skipped[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
-               ) > 0:
+        with tqdm(
+            gq.run(),
+            desc="Processing",
+            unit="page",
+            colour="blue",
+            bar_format="{l_bar}{bar:50}{r_bar}",
+            ncols=100,
+            ascii=" ░▒▓█",
+        ) as pbar:
 
-                ig._response_data = {}
-                ig._submitted = True
+            for page_num, page in enumerate(pbar):
+                if not pbar.total and hasattr(gq, "_numFound") and gq._numFound:
+                    pbar.total = math.ceil(gq._numFound / gq.query["limit"])
 
-                ig.prov_collect(
-                    [
-                        g[GlobusCV.CONTENT.value]
-                        for g in gmeta_ingest_skipped[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
-                    ],
-                    review=False,
-                    current_query=gq._current_query,
-                    metatype="files",
-                    batch_num=gq._n_batch,
-                )
+                if len(page) == 0:
+                    logger.info(f"Empty page {page_num}. stop sync!")
+                    break
 
-                logger.info(
-                    f"Skipped {len(gmeta_ingest_skipped[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value])}"
-                )
+                gmeta_ingest, gmeta_ingest_skipped = generate_gmeta_list_globus(page)
 
-            if len(gmeta_ingest[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]) == 0:
-                break
+                gq._n_batch = 0
+                # record the skipped entries
+                if len(
+                       gmeta_ingest_skipped[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+                   ) > 0:
 
-            gmeta_list = gmeta_ingest[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+                    ig._response_data = {}
+                    ig._submitted = True
 
-            if production:
-                batches = _process_batches(gmeta_list, SyncConfig.PROD_MAX_INGEST_SIZE)
-            else:
-                batches = _process_batches(gmeta_list, SyncConfig.TEST_MAX_INGEST_SIZE)
+                    ig.prov_collect(
+                        [
+                            g[GlobusCV.CONTENT.value]
+                            for g in gmeta_ingest_skipped[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+                        ],
+                        review=False,
+                        current_query=gq._current_query,
+                        metatype="files",
+                        batch_num=gq._n_batch,
+                    )
 
-            for n_batch, batch in enumerate(batches, start=1):
+                    skip_size = len(gmeta_ingest_skipped[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value])
+                    logger.info(f"Skipped {skip_size}")
 
-                gq._n_batch = n_batch
-                ig._submitted = False
-                logger.debug(f"Processing batch {gq._n_batch}")
+                if len(gmeta_ingest[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]) == 0:
+                    break
 
-                ig.ingest(
-                    {
-                        GlobusCV.INGEST_TYPE.value: GlobusCV.GMETALIST.value,
-                        GlobusCV.INGEST_DATA.value: {
-                            GlobusCV.GMETA.value: batch,
-                        }
-                    }
-                )
+                gmeta_list = gmeta_ingest[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
 
-                ig.prov_collect(
-                    [g[GlobusCV.CONTENT.value] for g in batch],
-                    review=False,
-                    current_query=gq._current_query,
-                    metatype="files",
-                    batch_num=gq._n_batch,
-                )
-
-            # update the n_batch in the query table
-            DBsession = MigrationDB.get_session()
-            with DBsession() as session, session.begin():
-                prepage = session.query(Query).order_by(Query.id.desc()).first()
-                if prepage is not None:
-                    prepage.n_datasets = gq._n_batch  # type: ignore[assignment]
-                    gq._n_batch = 0
+                if production:
+                    batches = _process_batches(gmeta_list, SyncConfig.PROD_MAX_INGEST_SIZE)
                 else:
-                    raise ValueError("cannot find the previous page in the query table")
+                    batches = _process_batches(gmeta_list, SyncConfig.TEST_MAX_INGEST_SIZE)
 
-            logger.info(f"Batch {gq._n_batch} ingested successfully for the page{page_num}")
+                for n_batch, batch in enumerate(batches, start=1):
 
-            if not production and (maxpage is not None) and page_num > maxpage:
-                break
+                    gq._n_batch = n_batch
+                    ig._submitted = False
+                    logger.debug(f"Processing batch {gq._n_batch}")
+
+                    ig.ingest(
+                        {
+                            GlobusCV.INGEST_TYPE.value: GlobusCV.GMETALIST.value,
+                            GlobusCV.INGEST_DATA.value: {
+                                GlobusCV.GMETA.value: batch,
+                            }
+                        }
+                    )
+
+                    ig.prov_collect(
+                        [g[GlobusCV.CONTENT.value] for g in batch],
+                        review=False,
+                        current_query=gq._current_query,
+                        metatype="files",
+                        batch_num=gq._n_batch,
+                    )
+
+                # update the n_batch in the query table
+                DBsession = MigrationDB.get_session()
+                with DBsession() as session, session.begin():
+                    prepage = session.query(Query).order_by(Query.id.desc()).first()
+                    if prepage is not None:
+                        prepage.n_datasets = gq._n_batch  # type: ignore[assignment]
+                        gq._n_batch = 0
+                    else:
+                        raise ValueError("cannot find the previous page in the query table")
+
+                logger.info(f"Batch {gq._n_batch} ingested successfully for the page{page_num}")
+
+                if not production and (maxpage is not None) and page_num > maxpage:
+                    break
+
+        # set the marker of the end of this query/search
+        DBsession = MigrationDB.get_session()
+        with DBsession() as session, session.begin():
+            prepage = session.query(Query).order_by(Query.id.desc()).first()
+            if prepage is not None:
+                prepage.cursorMark_next = "end of this query"  # type: ignore[assignment]
+            else:
+                raise ValueError("cannot find the previous page in the query table")
+
 
     current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info(f"Synchronization stop at {current_timestr}")

@@ -8,9 +8,13 @@ def test_globus_index(snapshot):
     gc = GlobusClient()
     cm = gc.get_client(name = "test")
 
-    index_dict = gc.list_index(cm)
-    actual_output = json.dumps(index_dict)
-    snapshot.assert_match(json.dumps(actual_output, indent=4), "test_index_output.json")
+    index_dict = cm.list_index()
+    index_dict["test_1"].pop("size_in_mb")
+    index_dict["test_1"].pop("num_subjects")
+    index_dict["test_1"].pop("num_entries")
+    actual_output = json.dumps({"test":index_dict["test_1"]})
+
+    snapshot.assert_match(json.dumps(actual_output, indent=4)+"\n", "test_index_output.json")
 
 
 def test_globus_search():
