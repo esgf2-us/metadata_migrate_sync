@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import ntplib
+from ntplib import NTPException
 import requests
 
 
@@ -51,13 +52,14 @@ def get_utc_time_from_server(ahead_minutes: int = 3) -> str:
         client = ntplib.NTPClient()
         response = client.request("pool.ntp.org")
         cur_time =  datetime.datetime.fromtimestamp(response.tx_time, datetime.timezone.utc)
-    except requests.RequestException:
+    except NTPException or requests.RequestException:
         cur_time =  datetime.datetime.now(datetime.timezone.utc)  # Local fallback
         for api in apis:
             try:
                 response = requests.get(api, timeout=5)
                 data = response.json()
 
+                print (data)
                 if 'datetime' in data:
                      utc_time = data["datetime"]  # 2025-04-09T19:42:34.490293+00:00
                 if 'dateTime' in data:
@@ -67,6 +69,9 @@ def get_utc_time_from_server(ahead_minutes: int = 3) -> str:
                     cur_time = datetime.datetime.fromisoformat(utc_time.replace('Z', '+00:00'))
                 elif '+00:00' not in utc_time:
                     cur_time = datetime.datetime.fromisoformat(utc_time[:-1] + '+00:00')
+
+                else:
+                    cur_time = datetime.datetime.fromisoformat(utc_time)
                 break
             except requests.RequestException as e:
                 print(f"Error fetching UTC time: {e}")
