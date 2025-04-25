@@ -440,8 +440,7 @@ class GlobusQuery(BaseQuery):
         if str(_globus_index_id) != str(self.end_point):
             raise ValueError("please give a right end point")
 
-        for filter in self.query["filters"]:
-            sq.add_filter(filter["field_name"], filter["values"], type=filter["type"])
+        sq["filters"] = self.query["filters"]
 
         page_size = self.query["limit"]
         offset = self.query["offset"]
@@ -475,15 +474,15 @@ class GlobusQuery(BaseQuery):
         if self.paginator == "post":
 
             max_retries = 3
+            sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
             while True:
                 retries = 0
                 r = None
                 while retries < max_retries:
                     try:
-                        start = time.time()
                         sq.set_query("*").set_limit(page_size).set_offset(offset)
-                        sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
 
+                        start = time.time()
                         r = sc.post_search(_globus_index_id, sq)
                         elapsed_time = time.time() - start
                         break

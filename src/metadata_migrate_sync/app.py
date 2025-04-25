@@ -73,7 +73,7 @@ def _validate_project(project: str) -> str:
         for p in ProjectReadWrite:
             if p.value == project:
                 return p
-        raise typer.BadParameter("project not supported")
+        raise typer.BadParameter(f"project: {project} not supported")
 
 
 @app.command()
@@ -201,6 +201,7 @@ def query_globus(
     printvar: str = typer.Option(None, help="print the content"),
     paginator: str = typer.Option("post", help="globus query type (post and scroll"),
     marker: str = typer.Option("None", help="marker for scroll search"),
+    filter_proj: bool = typer.Option(True, help="filter using project name"),
 ) -> None:
     """Search globus index with normal and scroll paginations."""
     if "." not in order_by:
@@ -242,7 +243,7 @@ def query_globus(
     }
     query["filters"].append(time_cond)
 
-    if project is not None:
+    if project is not None and filter_proj:
         proj_cond = {"type": "match_all", "field_name": "project", "values": [project.value]}
         query["filters"].append(proj_cond)
 
@@ -286,14 +287,10 @@ def query_globus(
     client_name, index_name = GlobusClient.get_client_index_names(globus_ep, project.value)
     _globus_index_id = GlobusClient.globus_clients[client_name].indexes[index_name]
 
-    print ('yyyyyyy', query)
-
     if marker != "None" and paginator == "scroll":
         query["marker"] = marker
     else:
         query.pop("marker", None)
-
-    print ('xxxxxxx', query)
 
     gq = GlobusQuery(
         end_point=_globus_index_id,
