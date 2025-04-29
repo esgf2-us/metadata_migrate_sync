@@ -1,0 +1,110 @@
+site_name: Metadata Migrate and Sync
+site_url: https://esgf2-us.github.io/metadata_migrate_sync
+site_description: >-
+   ESGF-1.5, migration and synchronization status
+repo_name: metadata_migrate_doc
+repo_url: https://github.com/esgf2-us/metadata_migrate_sync
+
+
+theme:
+   name: material
+   palette:
+      - media: "(prefers-color-scheme: light)"
+        scheme: default
+        primary: custom
+        accent: light green
+        toggle:
+          icon: material/desk-lamp-off
+          name: Switch to dark mode
+
+      # Palette toggle for dark mode
+      - media: "(prefers-color-scheme: dark)"
+        scheme: slate
+        primary: custom
+        accent: light green
+        toggle:
+          icon: material/desk-lamp-on
+          name: Switch to light mode
+   features:
+      - navigation.tabs
+      - content.code.copy
+      - navigation.top
+
+extra_javascript:
+  - https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js
+  - javascripts/extra.js
+
+extra_css:
+  - https://unpkg.com/tabulator-tables@6.3.1/dist/css/tabulator_bootstrap5.min.css
+  - stylesheets/extra.css
+
+# extensions
+markdown_extensions:
+   - abbr
+   - meta
+   - admonition # callouts/annotations
+   - pymdownx.emoji:
+        emoji_generator: !!python/name:material.extensions.emoji.to_svg
+        emoji_index: !!python/name:material.extensions.emoji.twemoji
+   - toc:
+        permalink: true
+   - md_in_html
+   - attr_list
+   - pymdownx.betterem
+   - pymdownx.snippets:
+        auto_append:
+          - includes/glossary.md
+   - def_list
+   - pymdownx.details # add collapsible call-outs
+   - footnotes
+   - pymdownx.tabbed:
+        alternate_style: true
+   - pymdownx.superfences:
+        custom_fences:
+          - name: mermaid
+            class: mermaid
+            format: !!python/name:pymdownx.superfences.fence_code_format
+   - pymdownx.critic
+   - pymdownx.caret
+   - pymdownx.keys
+   - pymdownx.mark
+   - pymdownx.tilde
+
+# plugins
+plugins:
+   - search
+   - include-markdown:
+        encoding: ascii
+        preserve_includer_indent: true
+        dedent: false
+        trailing_newlines: false
+        comments: true
+        rewrite_relative_urls: true
+        heading_offset: 0
+        start: <!--start-->
+        end: <!--end-->
+        recursive: true
+   - git-revision-date-localized:
+       enable_creation_date: true
+       fallback_to_build_date: true
+       type: iso_date
+       timezone: America/New_York
+       locale: en
+       enabled: true
+       strict: false
+
+
+nav:  
+   - About:
+       - index.md
+   - Migration:
+       - Migration/index.md
+   - Synchronization:
+       - Synchronization/index.md
+   - Validation:
+       - Validation/index.md
+       - Project verification: Validation/project_verification.md
+       - Data node verification: Validation/data_node_verification.md
+       - Institution id verification: Validation/institution_id_verification.md
+   - Notes:
+       - Notes/notes.md

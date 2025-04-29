@@ -1,0 +1,22 @@
+[
+  {
+    "index_name": "STAGE",
+    "query string": "{\"data\": {\"q\": \"*\", \"sort\": [{\"field_name\": \"id\", \"order\": \"asc\"}], \"filters\": [{\"field_name\": \"project\", \"values\": [\"CMIP6Plus\"], \"type\": \"match_all\"}, {\"field_name\": \"_timestamp\", \"values\": [{\"from\": \"*\", \"to\": \"2025-03-16T00:00:00Z\"}], \"type\": \"range\"}], \"limit\": 1000, \"offset\": 0}}",
+    "start time": "2025-03-29 21:57:03.985376",
+    "stop time": "2025-03-29 21:57:08.226098",
+    "numFound_first": "18",
+    "numFound_last": "18",
+    "page queried": 1,
+    "page ingested": 10,
+    "page skipped": 9,
+    "page checked": 1,
+    "record skipped": 0,
+    "record total": 180,
+    "source_index_id": "1f385759-596e-4085-8d79-5b1dfedd1ca2",
+    "ingest_index_id": "a8ef4320-9e5a-4793-837b-c45161ca1845",
+    "cmd_line": "/home/minxu/bin/app.py sync stage public CMIP6Plus --prod",
+    "hostname": "fedora",
+    "error": "no error",
+    "restart": "no restart info"
+  }
+]
