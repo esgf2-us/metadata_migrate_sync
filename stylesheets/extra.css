@@ -1,0 +1,134 @@
+:root > * {
+  --md-primary-fg-color:        #00662c;
+  --md-primary-fg-color--light: #00662c;
+  --md-primary-fg-color--dark:  #00662C;
+
+  --md-primary-bg-color: hsla(0, 0%, 100%, 0.7);
+  --md-primary-bg-color--light: hsla(0, 0%, 100%, 0.7);
+  --md-primary-bg-color--dark:  hsla(var(--md-hue), 15%, 14%, 1);
+
+  --md-footer-bg-color: #00454D;
+  --md-footer-bg-color--light: #373a36;
+  --md-footer-bg-color--dark: #373a36;
+}
+
+.mdx-green-color {
+  color: green;
+}
+
+#map {
+  width: 800px;
+  height: 600px;
+  margin: 0;
+}
+
+.map {
+  width: 800px;
+  height: 600px;
+  margin: 0;
+}
+
+.md-typeset figure {
+  text-align: left;
+  background: darkslategray;
+  width: 100%
+}
+
+.md-typeset figcaption {
+  max-width: 100%;
+  font-style: normal;
+  margin-left: 2em;
+}
+
+.md-typeset img[align="left"] {
+   margin-right: 2em;
+}
+
+.md-typeset img[align="right"] {
+   margin-left: 2em;
+}
+
+.mdx-spotlight__feature {
+  display: flex;
+  flex: 1 0 48%;
+  flex-flow: row nowrap;
+  gap: 3.2rem;
+  margin: 0 0 3.2rem;
+}
+
+.mdx-spotlight {
+  margin: 2em 0;
+}
+
+.tabulator {
+  font-size: 0.64rem;
+}
+
+[data-md-color-scheme="slate"] {
+  .tabulator-row .tabulator-cell {
+    background-color: var(--md-primary-bg-color--dark); 
+  }
+  .tabulator .tabulator-header .tabulator-col {
+    background-color: var(--md-primary-bg-color--dark);
+  }
+
+
+  .tabulator .tabulator-header .tabulator-header-contents {
+    background-color: var(--md-primary-bg-color--dark);
+  }
+
+  .tabulator-row {
+    background-color: var(--md-primary-bg-color--dark);
+    border-bottom: 0px;
+  }
+  .tabulator-row .tabulator-row-even {
+    background-color: var(--md-primary-bg-color--dark);
+  }
+  .tabulator-row .tabulator-row-even {
+    background-color: var(--md-primary-bg-color--dark);
+  }
+}
+
+
+
+table tr td{
+  border:none;
+}
+
+table tr td div{
+  padding:3px;
+}
+
+
+/* Mermaid's default SVG class */
+.mermaid svg[id^="__mermaid-"] {
+  height: 500px !important;
+}
+/* Target pie charts specifically */
+.mermaid .pieChart {
+    height: 500px !important;
+    width: 200% !important;
+}
+
+/* Or target all Mermaid SVGs */
+.mermaid svg {
+    max-height: 500px !important;
+    min-height: 500px !important;
+}
+
+.node-labels {
+    fill: #e0e0e0 !important;  /* Light gray for dark backgrounds */
+}
+.mermaid text {
+    fill: #e0e0e0 !important;  /* Light gray for dark backgrounds */
+}
+
+.__mermaid_1{
+    fill: #e0e0e0 !important;  /* Light gray for dark backgrounds */
+}
+
+#__mermaid_2 .pieTitleText {
+    fill: #e0e0e0 !important;  /* Light gray for dark backgrounds */
+}
+
+div.mermaid svg .node > g > text { fill: red !important; }
