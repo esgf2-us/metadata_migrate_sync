@@ -41,6 +41,7 @@ class SolrQuery(BaseQuery):
     """query solr index."""
 
     query: dict[str, Any]
+    skip_prov: bool = False
 
     _restart: bool = False
     _review: bool = False
@@ -122,8 +123,8 @@ class SolrQuery(BaseQuery):
 
     @staticmethod
     def _make_request(
-        url: str, 
-        params: dict[str, Any], 
+        url: str,
+        params: dict[str, Any],
         is_test: bool = False
     ) -> tuple[dict[str, Any], float, str] | None | int:
         """Make an HTTP GET request with retry logic.
@@ -189,7 +190,10 @@ class SolrQuery(BaseQuery):
                 break
 
             response_json, response_time, response_url = result
-            self.prov_collect(response_url, response_time, response_json)
+            if self.skip_prov:
+                logger.info("skip the provenance and database update for solr query")
+            else:
+                self.prov_collect(response_url, response_time, response_json)
 
             docs = response_json.get("response", {}).get("docs", [])
             yield docs
