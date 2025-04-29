@@ -268,7 +268,7 @@ def query_globus(
 
                 match value_2:
                     case "like":
-                        filter_cond = {"type": value_2, "field_name": key[2:], "value": value_1}
+                        filter_cond = {"type": value_2, "field_name": key[2:], "value": "*" + value_1 + "*"}
                     case "not":
                         filter_cond = {
                             "type": value_2,
@@ -347,6 +347,83 @@ def check_task(
         db_file = db_file,
         update = update,
     )
+
+
+@app.command()
+def delete_subjects(
+    globus_ep: str = typer.Argument(
+        help="globus end point name", callback=_validate_tgt_ep),
+    project: str = typer.Argument(help="project name", callback=_validate_project),
+    json_file: str = typer.Argument(help="the json file stores the query results"),
+) -> None:
+    """Delete the subjects in a globus index."""
+
+    client_name, index_name = GlobusClient.get_client_index_names(globus_ep, project.value)
+    _globus_index_id = GlobusClient.globus_clients[client_name].indexes[index_name]
+
+    gc = GlobusClient()
+    cm = gc.get_client(globus_ep)
+    sc = cm.search_client
+
+    index_data = sc.get_index(_globus_index_id).data
+
+
+
+    message = typer.style(
+        f"client id: {cm.app_client_id} \n",
+        fg=typer.colors.GREEN, bold=True
+    ) + typer.style(
+        f"token name: {cm.token_name} \n",
+        fg=typer.colors.GREEN, bold=True
+    ) + typer.style(
+        f"globus index id: {_globus_index_id}: {index_data['description']} \n",
+        fg=typer.colors.RED, bold=True
+    ) + typer.style(
+        f"want to delete records in the json file: {json_file} !!!\n",
+        fg=typer.colors.RED, bold=True
+    )
+
+    typer.echo(message)
+
+    with open(json_file) as f:
+        # Load the JSON data from the file
+        del_data = json.load(f)
+
+    del_data_length =  len(del_data["gmeta"])
+
+    to_be_deleted = []
+    for g in del_data["gmeta"]:
+        if g["entries"][0]["content"]["project"] != [project.value]:
+            project_in_doc = g["entries"][0]["content"]["project"][0]
+            print (f"the project of the document {project_in_doc}, "
+                f"but the project {project.value} is provided")
+            raise typer.Abort()
+        else:
+            to_be_deleted.append(g['subject'])
+
+    if len(to_be_deleted) != del_data_length:
+        raise ValueError("the length of to be deleted docs are not the same as that from the json file")
+    else:
+        message = typer.style(
+            f"you are going to delete {del_data_length} records \n",
+            fg=typer.colors.RED, bold=True
+        ) + typer.style(
+            "\n\n\n Yes or No?",
+            fg=typer.colors.BLUE, bold=True
+        )
+        confirm = typer.prompt(message)
+        if confirm == 'Yes':
+            print (confirm)
+            response = sc.batch_delete_by_subject(
+                _globus_index_id,
+                subjects=to_be_deleted,
+            )
+        else:
+            print ("Do nothing and quit\n")
+            raise typer.Abort()
+
+
+
 
 
 @app.callback()
