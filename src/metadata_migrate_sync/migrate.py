@@ -18,6 +18,8 @@ from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.query import SolrQuery, params_search
 from metadata_migrate_sync.solr import SolrIndexes
 
+logger = logging.getLogger(__name__)
+
 
 @validate_call
 def metadata_migrate(
@@ -43,7 +45,6 @@ def metadata_migrate(
         ingest_index_type="globus",
         ingest_index_name=target_epname,
         ingest_index_schema="ESGF1.5",
-        log_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.log",
         prov_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.json",
         db_file=f"migration_{source_epname}_{target_epname}_{project.value}_{metatype}.sqlite",
         type_query=metatype.capitalize(),
@@ -52,16 +53,10 @@ def metadata_migrate(
 
     pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
 
-    logger = (
-        provenance._instance.get_logger(__name__)
-        if provenance._instance is not None else logging.getLogger(__name__)
-    )
-
     logger.info(f"set up the provenance and save it to {prov.prov_file}")
-    logger.info(f"log file is at {prov.log_file}")
 
     # database
-    _ = MigrationDB(prov.db_file, True)
+    MigrationDB(prov.db_file, True)
     logger.info(f"initialed the sqllite database at {prov.db_file}")
 
     # query generator
@@ -201,4 +196,4 @@ def metadata_migrate(
     # clean up
     logging.shutdown()
     prov.successful = True
-    pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
+    prov.prov_file.write_text(prov.model_dump_json(indent=2))

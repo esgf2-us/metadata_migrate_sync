@@ -1,0 +1,13 @@
+instances:
+  cmip6plus:
+    command: |-
+      while true; do
+        esgf15mms sync stage backup CMIP6Plus --prod --dry-run --start-time 2025-04-30 --work-dir /data
+        sleep 5m
+      done
+  drcdp:
+    command: |-
+      while true; do
+        esgf15mms sync stage backup DRCDP --prod --dry-run --start-time 2025-04-30 --work-dir /data
+        sleep 5m
+      done

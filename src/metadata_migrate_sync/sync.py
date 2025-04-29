@@ -19,6 +19,9 @@ from metadata_migrate_sync.query import GlobusQuery
 from metadata_migrate_sync.util import get_last_value, get_utc_time_from_server
 
 
+logger = logging.getLogger(__name__)
+
+
 class SyncConfig:
     """config class for sync."""
 
@@ -69,8 +72,7 @@ def _setup_time_range_filter(
     production: bool,
     sync_freq: int | None,
     start_time: datetime | None,
-    logger: logging.Logger,
-    data_dir: str = "./",
+    data_dir: pathlib.Path = pathlib.Path("./"),
 ) -> dict[str, dict[str, Any] | None]:
     """Set up the time range filter for the query."""
     if not production or sync_freq is None:
@@ -88,12 +90,11 @@ def _setup_time_range_filter(
     prod_start = None
     for day in [0, 1, 2]:
         time_str = (datetime.now() - timedelta(days=day)).strftime("%Y-%m-%d")
-        path_db = f"{path_db_base}_{time_str}.sqlite"
-        prev_db = pathlib.Path(data_dir) / path_db
+        prev_db = data_dir / f"{path_db_base}_{time_str}.sqlite"
 
         logger.info(f"Looking for previous database file {prev_db}")
 
-        if pathlib.Path(prev_db).is_file():
+        if prev_db.is_file():
             query_str = get_last_value('query_str', "query", db_path=prev_db)
 
             cursorMark_next = get_last_value('cursorMark_next', "query", db_path=prev_db)
@@ -139,6 +140,8 @@ def metadata_sync(
     production: bool,
     sync_freq: int | None = None,
     start_time: datetime | None = None,
+    work_dir: pathlib.Path,
+    dry_run: bool = False,
 ) -> None:
     """Sync the metadata between two Globus Indexes."""
     target_client, target_index = GlobusClient.get_client_index_names(target_epname, target_epname)
@@ -159,26 +162,19 @@ def metadata_sync(
         ingest_index_type="globus",
         ingest_index_name=target_epname,
         ingest_index_schema="ESGF1.5",
-        log_file=f"{file_base}.log",
-        prov_file=f"{file_base}.json",
-        db_file=f"{file_base}.sqlite",
+        prov_file=work_dir / f"{file_base}.json",
+        db_file=work_dir / f"{file_base}.sqlite",
         type_query="mixed (datasets and files)",
         cmd_line=" ".join(sys.argv),
     )
 
 
-    pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
-
-    logger = (
-        provenance._instance.get_logger(__name__)
-        if provenance._instance is not None else logging.getLogger()
-    )
+    prov.prov_file.write_text(prov.model_dump_json(indent=2))
 
     logger.info(f"set up the provenance and save it to {prov.prov_file}")
-    logger.info(f"log file is at {prov.log_file}")
 
     # database
-    _ = MigrationDB(prov.db_file, True)
+    MigrationDB(prov.db_file, True)
     logger.info(f"initialized the sqlite database at {prov.db_file}")
 
     # query generator
@@ -197,13 +193,13 @@ def metadata_sync(
     }
 
 
-    path_db_base = f"synchronization_{source_epname}_{target_epname}_{project.value}"   #_{time_str}.sqlite"
+    path_db_base: str = f"synchronization_{source_epname}_{target_epname}_{project.value}"   #_{time_str}.sqlite"
     time_range_filter = _setup_time_range_filter(
         path_db_base,
         production,
         sync_freq,
         start_time,
-        logger,
+        data_dir=work_dir,
     )
 
 
@@ -213,7 +209,6 @@ def metadata_sync(
     else:
         search_dict["limit"] = 20
         maxpage = 2
-
 
 
     gq = GlobusQuery(
@@ -315,7 +310,8 @@ def metadata_sync(
                             GlobusCV.INGEST_DATA.value: {
                                 GlobusCV.GMETA.value: batch,
                             }
-                        }
+                        },
+                        dry_run=dry_run,
                     )
 
                     ig.prov_collect(
@@ -358,7 +354,7 @@ def metadata_sync(
     # clean up
     logging.shutdown()
     prov.successful = True
-    pathlib.Path(prov.prov_file).write_text(prov.model_dump_json(indent=2))
+    prov.prov_file.write_text(prov.model_dump_json(indent=2))
 
 
 if __name__ == "__main__":
@@ -368,5 +364,6 @@ if __name__ == "__main__":
         target_epname="test",
         project=ProjectReadWrite.INPUT4MIPS,
         production=False,
+        work_dir=pathlib.Path("./"),
     )
 
