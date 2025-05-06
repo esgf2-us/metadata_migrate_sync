@@ -1,20 +1,24 @@
 """Ingest module."""
 import json
 from datetime import datetime
+import logging
 from typing import Any, Literal
 from uuid import UUID
 
-from globus_sdk import SearchClient
+from globus_sdk import GlobusHTTPResponse, SearchClient
 from pydantic import (
     BaseModel,
     validate_call,
 )
+from requests import Response
 from sqlalchemy.orm import object_session
 
 from metadata_migrate_sync.database import Datasets, Files, Ingest, MigrationDB, Query
 from metadata_migrate_sync.globus import GlobusClient, GlobusIngestModel
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
-from metadata_migrate_sync.provenance import provenance
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseIngest(BaseModel):
@@ -33,9 +37,8 @@ class GlobusIngest(BaseIngest):
     _response_data: dict[Any, Any] = {}
 
     # from globus2solr
-    def ingest(self, gingest: dict[str, Any]) -> None:
+    def ingest(self, gingest: dict[str, Any], dry_run: bool = False) -> None:
         """Ingest documents to a globus index using globus search client."""
-        logger = provenance._instance.get_logger(__name__)
 
         current_timestr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.info("start the inject now at " + current_timestr)
@@ -54,11 +57,12 @@ class GlobusIngest(BaseIngest):
             logger.error("end_point is not consistent with ep_name")
             raise ValueError("end_point is not consistent with ep_name")
 
-        if isinstance(sc, SearchClient):
-            response = sc.ingest(_globus_index_id, gingest)
+        if dry_run:
+            r = Response()
+            r._content = b"{'acknowledged': True, 'success': True, 'task_id': '1234567890'}"
+            response = GlobusHTTPResponse(r)
         else:
-            logger.error("not a search client")
-            raise ValueError("not a search client")
+            response = sc.ingest(_globus_index_id, gingest)
 
         self._response_data = response.data
 
@@ -79,7 +83,6 @@ class GlobusIngest(BaseIngest):
         batch_num: int = -1,
     ) -> None:
         """Provenance collection and database updation."""
-        logger = provenance._instance.get_logger(__name__)
 
         if not self._submitted:
 

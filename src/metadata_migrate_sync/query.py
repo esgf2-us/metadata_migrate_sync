@@ -18,7 +18,10 @@ from urllib3 import Retry
 from metadata_migrate_sync.database import Files, Index, Ingest, MigrationDB, Query
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
-from metadata_migrate_sync.provenance import provenance
+
+
+logger = logging.getLogger(__name__)
+
 
 params_search = {
     "sort": "id asc",
@@ -51,7 +54,6 @@ class SolrQuery(BaseQuery):
 
     def get_cursormark(self, review: bool = False) -> None:
         """Get the cursormark from the database file."""
-        logger = provenance._instance.get_logger(__name__) if provenance is not None else logging.getLogger()
         if review:
             # get all the failed cases in the database, re-query and re-ingest
 
@@ -140,7 +142,6 @@ class SolrQuery(BaseQuery):
             None if request failed.
 
         """
-        logger = provenance.get_logger(__name__)
 
         retry_strategy = Retry(
             total=3,
@@ -181,7 +182,6 @@ class SolrQuery(BaseQuery):
             Generator[Any, None, None]: The docs from each page.
 
         """
-        logger = provenance.get_logger(__name__)
 
         while True:
             result = self._make_request(self.end_point, self.query)
@@ -283,12 +283,15 @@ class SolrQuery(BaseQuery):
                 self._current_query = curpage
 
 
+Paginator = Literal["post", "scroll"]
+
+
 class GlobusQuery(BaseQuery):
     """query globus index."""
 
     query: dict[Any, Any]
     generator: bool = False
-    paginator: Literal["post", "scroll"]
+    paginator: Paginator
     skip_prov: bool = False
 
     _current_query: Any | None = None
@@ -300,7 +303,6 @@ class GlobusQuery(BaseQuery):
 
     def get_offset_marker(self, review:bool = False) -> None:
         """Find the offset or marker of previous synchronization."""
-        logger = provenance._instance.get_logger(__name__)
 
         if review:
             pass
@@ -427,10 +429,6 @@ class GlobusQuery(BaseQuery):
 
     def run(self) -> Generator[Any, None, None]:
         """Query the globus index in a pagination way."""
-        logger = (
-            provenance._instance.get_logger(__name__)
-            if provenance._instance is not None else logging.getLogger(__name__)
-        )
 
         client_name, index_name = GlobusClient.get_client_index_names(self.ep_name, self.project.value)
 
@@ -525,7 +523,6 @@ class GlobusQuery(BaseQuery):
         sq: SearchQuery
     ) -> None:
         """Collect provenance and update database from a globus query."""
-        logger = provenance._instance.get_logger(__name__)
         self._numFound = entries.get("total")
 
 

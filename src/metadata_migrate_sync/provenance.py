@@ -1,11 +1,9 @@
 """Provenance module."""
-import logging
-import logging.config
 import os
-import pathlib
 import platform
 import sys
 from importlib.metadata import distributions
+from pathlib import Path
 from typing import Any, Literal
 from uuid import UUID
 
@@ -42,9 +40,8 @@ class provenance(BaseModel, metaclass=SingletonMeta):
     ingest_index_schema: str = "ESGF1.5"
     cmd_line: str
 
-    log_file: str | pathlib.Path = "test.log"
-    prov_file: str | pathlib.Path = "test.json"
-    db_file: str | pathlib.Path = "test.db"
+    prov_file: Path = Path("test.json")
+    db_file: Path = Path("test.db")
 
     successful: bool = False
 
@@ -60,42 +57,3 @@ class provenance(BaseModel, metaclass=SingletonMeta):
     python_modules: dict[str, str] | None = {
         p.metadata["Name"]: p.version for p in distributions()
     }
-
-    @classmethod
-    def get_logger(cls, name:str) -> logging.Logger:
-        """Get a logger handler."""
-        log_filename = "test.log" if cls._instance is None else cls._instance.log_file
-
-        logging_config = {
-            "version": 1,
-            "formatters": {
-                "standard": {
-                    "format": "%(asctime)s - %(funcName)s - %(levelname)s - %(message)s",
-                },
-            },
-            "handlers": {
-                "console": {
-                    "level": "INFO",
-                    "class": "logging.StreamHandler",
-                    "formatter": "standard",
-                },
-                "file": {
-                    "level": "DEBUG",
-                    "class": "logging.FileHandler",
-                    "filename": log_filename,
-                    "formatter": "standard",
-                },
-            },
-            "loggers": {
-                "": {
-                    "handlers": ["file"],
-                    "level": "DEBUG",
-                    "propagate": True,
-                },
-            },
-        }
-
-        logging.config.dictConfig(logging_config)
-        logger = logging.getLogger()
-
-        return logger

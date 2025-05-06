@@ -11,9 +11,8 @@ import requests
 from ntplib import NTPException
 
 
-def create_lock(lockfile_path: str) -> int:
+def create_lock(lockfile_path: Path) -> int:
     """Create a lock file to prevent multiple instances."""
-    lock_file = Path(lockfile_path)
 
     try:
         # Create or open the lock file
@@ -27,10 +26,10 @@ def create_lock(lockfile_path: str) -> int:
 
         return fd
     except (OSError, BlockingIOError):
-        print(f"Another instance is already running (PID: {lock_file.read_text().strip()})")
+        print(f"Another instance is already running (PID: {lockfile_path.read_text().strip()})")
         sys.exit(1)
 
-def release_lock(fd: int, lockfile_path: str) -> None:
+def release_lock(fd: int, lockfile_path: Path) -> None:
     """Release the lock file."""
     try:
         os.unlink(lockfile_path)
@@ -83,7 +82,7 @@ def get_utc_time_from_server(ahead_minutes: int = 3) -> str:
 
 
 
-def get_last_value(column_name:str, table_name:str, db_path:str='database.db') -> str | None:
+def get_last_value(column_name: str, table_name: str, db_path: Path = Path('database.db')) -> str | None:
     """Get a column value in the last row of a table."""
     with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as conn:
         cursor = conn.cursor()

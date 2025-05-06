@@ -1,0 +1,97 @@
+name: K8S Build & Test
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "v*"
+
+permissions: {}
+
+jobs:
+  container:
+    name: Build & publish container
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: metadata
+        with:
+          images: ghcr.io/esgf2-us/metadata-migrate-sync
+          tags: |
+            type=ref,event=pr
+            type=ref,event=tag
+      - uses: docker/build-push-action@v4
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+
+  helm:
+    name: Publish Helm chart
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - name: Install jq
+        run: |
+          sudo apt-get install --yes jq
+      - name: Install yq
+        run: |
+          pip install yq
+      - name: Generate SemVer
+        id: semantic-version
+        run: |
+          CHART_VERSION=$(yq -r '.version' helm/Chart.yaml)
+          LOCAL_SEGMENT=+pr-${{ github.event.pull_request.number }}
+          GENERATED_VERSION=${CHART_VERSION}${LOCAL_SEGMENT}
+          yq -Y -i ".version = \"$GENERATED_VERSION\"" helm/Chart.yaml
+          echo "generated-semver=$GENERATED_VERSION" >> $GITHUB_OUTPUT
+      - name: Chart | Push
+        uses: appany/helm-oci-chart-releaser@v0.4.2
+        with:
+          name: esgf-sync
+          repository: esgf2-us
+          tag: ${{ steps.semantic-version.outputs.generated-semver }}
+          path: helm
+          registry: ghcr.io
+          registry_username: ${{ github.actor }}
+          registry_password: ${{ secrets.GITHUB_TOKEN }}
+          update_dependencies: "true"
+
+  test:
+    name: Test deployment
+    runs-on: ubuntu-latest
+    needs: [container, helm]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start minikube
+        uses: medyagh/setup-minikube@latest
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.2.0
+      - name: Install Helm Chart
+        run: |
+          helm install test oci://ghcr.io/esgf2-us/esgf-sync \
+            --version=${{ needs.helm.outputs.generated-semver }} \
+            --set image.tag=pr-${{ github.event.pull_request.number }} \
+            -f helm/ci/sync_dry_run.yaml \
+            --debug \
+            --wait
+
+          kubectl get pods

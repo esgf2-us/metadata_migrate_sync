@@ -1,0 +1,84 @@
+{{- range $name, $spec := .Values.instances }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "esgf-sync.fullname" $ }}-{{ $name }}
+  labels:
+    {{- include "esgf-sync.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "esgf-sync.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $name }}
+  template:
+    metadata:
+      {{- with $.Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "esgf-sync.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $name }}
+        {{- with $.Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "esgf-sync.serviceAccountName" $ }}
+      {{- with $.Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ $name }}
+        env:
+        - name: GLOBUS_CLIENT_ID
+          value: {{ $.Values.GLOBUS_CLIENT_ID | quote }}
+        - name: GLOBUS_CLIENT_SECRET
+          value: {{ $.Values.GLOBUS_CLIENT_SECRET | quote }}
+        command: ["/bin/sh", "-c"]
+        args:
+        - {{ $spec.command | quote }}
+        {{- with $.Values.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+        imagePullPolicy: {{ $.Values.image.pullPolicy }}
+        {{- with $.Values.resources }}
+        resources:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        volumeMounts:
+        - name: {{ include "esgf-sync.fullname" $ }}-{{ $name }}
+          mountPath: /data
+      {{- with $.Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ include "esgf-sync.fullname" $ }}-{{ $name }}
+      labels:
+        {{- include "esgf-sync.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $name }}
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5G
+---
+{{- end }}

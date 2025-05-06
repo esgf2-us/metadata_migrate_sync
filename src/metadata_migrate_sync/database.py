@@ -1,5 +1,6 @@
 """Sqlite database for index migrationa and sync."""
 
+import logging
 import pathlib
 from datetime import datetime
 from typing import Any, ClassVar, Optional
@@ -23,6 +24,8 @@ from sqlalchemy.orm import (
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.solr import SolrIndexes
+
+logger = logging.getLogger(__name__)
 
 
 # Create a base class for models
@@ -151,9 +154,6 @@ class MigrationDB:
             self._DATABASE_URL = f"sqlite:///{db_filename}"
             self._engine = create_engine(self._DATABASE_URL, echo=False)
             Base.metadata.create_all(self._engine)
-
-            logger = provenance.get_logger(__name__)
-
 
             logger.info("this is the only initalization in database")
 

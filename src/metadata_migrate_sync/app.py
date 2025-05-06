@@ -8,13 +8,12 @@ the subcommands are:
 
 """
 
-
-
 import datetime
 import json
 import pathlib
 import sys
 from enum import Enum
+from typing import Literal
 
 import typer
 from rich import print
@@ -45,26 +44,25 @@ Project = _combine_enums(ProjectReadOnly, ProjectReadWrite)
 app = typer.Typer()
 
 
-def _validate_meta(meta: str) -> str:
+def _validate_meta(meta: str) -> Literal["files", "datasets"]:
     if meta not in ["files", "datasets"]:
         raise typer.BadParameter("meta must be 'files' or 'datasets'")
     return meta
 
 
-def _validate_src_ep(ep: str) -> str:
-
+def _validate_src_ep(ep: str) -> Literal["ornl", "anl", "llnl", "stage", "test_1", "test"]:
     if ep not in ["ornl", "anl", "llnl", "stage", "test_1", "test"]:
         raise typer.BadParameter(f"{ep} is not a supported ep")
     return ep
 
 
-def _validate_tgt_ep(ep: str) -> str:
+def _validate_tgt_ep(ep: str) -> Literal["test", "test_1", "public", "stage", "backup"]:
     if ep not in ["test", "test_1", "public", "stage", "backup"]:
         raise typer.BadParameter(f"{ep} is not a supported ep ")
     return ep
 
 
-def _validate_project(project: str) -> str:
+def _validate_project(project: str) -> ProjectReadOnly | ProjectReadWrite:
     if project is not None:
         for p in ProjectReadOnly:
             if p.value == project:
@@ -78,14 +76,10 @@ def _validate_project(project: str) -> str:
 
 @app.command()
 def migrate(
-    source_ep: str = typer.Argument(
-        help="source end point name", callback=_validate_src_ep
-    ),
-    target_ep: str = typer.Argument(
-        help="target end point name", callback=_validate_tgt_ep
-    ),
-    project: str = typer.Argument(help="project name", callback=_validate_project),
-    meta: str = typer.Option(help="metadata type", callback=_validate_meta),
+    source_ep: str = typer.Argument(help="source end point name"),
+    target_ep: str = typer.Argument(help="target end point name"),
+    project: str = typer.Argument(help="project name"),
+    meta: str = typer.Option(help="metadata type"),
     prod: bool = typer.Option(help="production run", default=False),
 ) -> None:
     """Migrate documents in solr index to the globus index.
@@ -93,22 +87,21 @@ def migrate(
     Following the ESGF-1.5 migration plan and desingation
     """
     metadata_migrate(
-        source_epname=source_ep,
-        target_epname=target_ep,
-        metatype=meta,
-        project=project,
+        source_epname=_validate_src_ep(source_ep),
+        target_epname=_validate_tgt_ep(target_ep),
+        metatype=_validate_meta(meta),
+        project=_validate_project(project),
         production=prod,
     )
 
-def _validate_tgt_ep_all(ep: str) -> str:
+def _validate_tgt_ep_all(ep: str) -> Literal["test", "test_1", "public", "stage", "all-prod", "backup"]:
     if ep not in ["test", "test_1", "public", "stage", "all-prod", "backup"]:
         raise typer.BadParameter(f"{ep} is not a supported ep ")
     return ep
 
 @app.command()
 def check_index(
-    globus_ep: str = typer.Argument(
-        help="globus end point name", callback=_validate_tgt_ep_all),
+    globus_ep: str = typer.Argument(help="globus end point name", callback=_validate_tgt_ep_all),
     project: str = typer.Option(None, help="project name", callback=_validate_project),
     save: bool = typer.Option(False, help="save to index.json"),
 ) -> None:
@@ -145,35 +138,29 @@ def check_index(
 
 @app.command()
 def sync(
-    source_ep: str = typer.Argument(
-        help="source end point name", callback=_validate_src_ep
-    ),
-    target_ep: str = typer.Argument(
-        help="target end point name", callback=_validate_tgt_ep
-    ),
-    project: str = typer.Argument(help="project name", callback=_validate_project),
+    source_ep: str = typer.Argument(help="source end point name"),
+    target_ep: str = typer.Argument(help="target end point name"),
+    project: ProjectReadWrite = typer.Argument(help="project name"),
     prod: bool = typer.Option(help="production run", default=False),
     start_time: datetime.datetime = typer.Option(help="start time", default=None),
+    work_dir: pathlib.Path = typer.Option(help="writable directory to store database and outputs", default=pathlib.Path(".")),
+    dry_run: bool = typer.Option(help="do everything the same except don't write to the target index", default=False),
 ) -> None:
     """Sync the ESGF-1.5 staged indexes to the public index.
 
     Details can be seen in the design.md
     """
-    lock_file_path = f"/tmp/metadata_migrate_sync_{project.value}.lock"  # noqa S108
 
-    try:
-        lock_fd = create_lock(lock_file_path)
-
-        metadata_sync(
-            source_epname=source_ep,
-            target_epname=target_ep,
-            project=project,
-            production=prod,
-            sync_freq=5,
-            start_time=start_time,
-        )
-    finally:
-        release_lock(lock_fd, lock_file_path)
+    metadata_sync(
+        source_epname=_validate_src_ep(source_ep),
+        target_epname=_validate_tgt_ep(target_ep),
+        project=_validate_project(project),
+        production=prod,
+        sync_freq=5,
+        start_time=start_time,
+        work_dir=work_dir,
+        dry_run=dry_run,
+    )
 
 
 @app.command()
