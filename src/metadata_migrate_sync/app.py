@@ -10,9 +10,9 @@ the subcommands are:
 
 import datetime
 import json
-import pathlib
 import sys
 from enum import Enum
+from pathlib import Path
 from typing import Literal
 
 import typer
@@ -24,11 +24,12 @@ from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.query import GlobusQuery
 from metadata_migrate_sync.sync import metadata_sync
-from metadata_migrate_sync.util import create_lock, release_lock
+from metadata_migrate_sync.util import file_lock
 
 sys.setrecursionlimit(10000)
 
-def _combine_enums(*enums: Enum, name:str="CombinedEnum") -> Enum:
+
+def _combine_enums(*enums: Enum, name: str = "CombinedEnum") -> Enum:
     members = {}
     for enum in enums:
         for member in enum:
@@ -94,10 +95,12 @@ def migrate(
         production=prod,
     )
 
+
 def _validate_tgt_ep_all(ep: str) -> Literal["test", "test_1", "public", "stage", "all-prod", "backup"]:
     if ep not in ["test", "test_1", "public", "stage", "all-prod", "backup"]:
         raise typer.BadParameter(f"{ep} is not a supported ep ")
     return ep
+
 
 @app.command()
 def check_index(
@@ -107,17 +110,16 @@ def check_index(
 ) -> None:
     """Check the globus index status."""
     gc = GlobusClient()
-    cm = gc.get_client(name = globus_ep)
+    cm = gc.get_client(name=globus_ep)
 
     sc = cm.search_client
 
     if project is None:
-
         tab_index = []
         for index_name in cm.indexes:
             index_id = cm.indexes.get(index_name)
             r = sc.get_index(index_id)
-            print (r.data)
+            print(r.data)
             tab_index.append(r.data)
 
     else:
@@ -128,13 +130,14 @@ def check_index(
             index_id = cm.indexes.get(project.value)
 
         if index_id:
-            print (sc.get_index(index_id).data)
+            print(sc.get_index(index_id).data)
             tab_index = sc.get_index(index_id).data
         else:
-            print (f"Cannot find index for {project} in the {globus_ep} group, find it in public group")
+            print(f"Cannot find index for {project} in the {globus_ep} group, find it in public group")
 
     if save:
-        pathlib.Path("index.json").write_text(json.dumps(tab_index))
+        Path("index.json").write_text(json.dumps(tab_index))
+
 
 @app.command()
 def sync(
@@ -143,42 +146,45 @@ def sync(
     project: ProjectReadWrite = typer.Argument(help="project name"),
     prod: bool = typer.Option(help="production run", default=False),
     start_time: datetime.datetime = typer.Option(help="start time", default=None),
-    work_dir: pathlib.Path = typer.Option(help="writable directory to store database and outputs", default=pathlib.Path(".")),
-    dry_run: bool = typer.Option(help="do everything the same except don't write to the target index", default=False),
+    work_dir: Path = typer.Option(help="writable directory to store  outputs", default=Path(".")),
+    dry_run: bool = typer.Option(
+        help="do everything the same except don't write to the target index", default=False
+    ),
 ) -> None:
     """Sync the ESGF-1.5 staged indexes to the public index.
 
     Details can be seen in the design.md
     """
 
-    metadata_sync(
-        source_epname=_validate_src_ep(source_ep),
-        target_epname=_validate_tgt_ep(target_ep),
-        project=_validate_project(project),
-        production=prod,
-        sync_freq=5,
-        start_time=start_time,
-        work_dir=work_dir,
-        dry_run=dry_run,
-    )
+    with file_lock():
+        metadata_sync(
+            source_epname=_validate_src_ep(source_ep),
+            target_epname=_validate_tgt_ep(target_ep),
+            project=_validate_project(project),
+            production=prod,
+            sync_freq=5,
+            start_time=start_time,
+            work_dir=work_dir,
+            dry_run=dry_run,
+        )
 
 
 @app.command()
 def create_index() -> None:
     """Create index for the test app."""
     gc = GlobusClient()
-    cm = gc.get_client(name = "test")
+    cm = gc.get_client(name="test")
     sc = cm.search_client
 
     r = sc.create_index("minxu test index 2", "for testing purpose")
 
-    print (r)
+    print(r)
+
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def query_globus(
     ctx: typer.Context,
-    globus_ep: str = typer.Argument(
-        help="globus end point name", callback=_validate_tgt_ep),
+    globus_ep: str = typer.Argument(help="globus end point name", callback=_validate_tgt_ep),
     project: str = typer.Argument(help="project name", callback=_validate_project),
     order_by: str = typer.Option(help="sort the result by field_name.asc or field_name.desc"),
     limit: int = typer.Option(10, help="the limit of a page"),
@@ -192,41 +198,43 @@ def query_globus(
 ) -> None:
     """Search globus index with normal and scroll paginations."""
     if "." not in order_by:
-        print ("please provide the correct order-by")
+        print("please provide the correct order-by")
         raise typer.Abort()
 
-    order_field = order_by.split('.')[0]
-    order = order_by.split('.')[1]
-    query = {"filters":[], "sort_field": order_field, "sort": order}
+    order_field = order_by.split(".")[0]
+    order = order_by.split(".")[1]
+    query = {"filters": [], "sort_field": order_field, "sort": order}
 
     query["limit"] = limit
     query["offset"] = offset
 
-    if 'TO' not in time_range:
-        print ("please provide a validate time range datetime-datetime")
+    if "TO" not in time_range:
+        print("please provide a validate time range datetime-datetime")
         raise typer.Abort()
 
-    start_time = time_range.split('TO')[0]
-    if start_time == '':
+    start_time = time_range.split("TO")[0]
+    if start_time == "":
         start_iso = "*"
     else:
         t_start = datetime.datetime.fromisoformat(start_time)
         start_iso = t_start.isoformat() + "Z"  # "2023-01-01T00:00:00Z"
 
-    end_time = time_range.split('TO')[1]
-    if end_time == '':
+    end_time = time_range.split("TO")[1]
+    if end_time == "":
         end_iso = "*"
     else:
         t_end = datetime.datetime.fromisoformat(end_time)
-        end_iso = t_end.isoformat() + "Z"     # "2023-12-31T00:00:00Z"
+        end_iso = t_end.isoformat() + "Z"  # "2023-12-31T00:00:00Z"
 
     time_cond = {
         "type": "range",
         "field_name": "_timestamp",
-        "values": [{
-        "from": start_iso,  # Greater than or equal to start_date
-        "to": end_iso     # Less than or equal to end_date
-         }]
+        "values": [
+            {
+                "from": start_iso,  # Greater than or equal to start_date
+                "to": end_iso,  # Less than or equal to end_date
+            }
+        ],
     }
     query["filters"].append(time_cond)
 
@@ -243,12 +251,11 @@ def query_globus(
             else:
                 typer.echo(f"Ignoring invalid argument: {arg}")
 
-
     # Handle kwargs
     if kwargs:
         for key, value in kwargs:
             if key[2:] == "project":
-                 query["filters"].remove(proj_cond)
+                query["filters"].remove(proj_cond)
             if "::" in value:
                 value_1 = value.split("::")[0]
                 value_2 = value.split("::")[1]
@@ -259,7 +266,7 @@ def query_globus(
                     case "not":
                         filter_cond = {
                             "type": value_2,
-                            "filter":{
+                            "filter": {
                                 "type": "match_all",
                                 "field_name": key[2:],
                                 "values": [value_1],
@@ -300,27 +307,30 @@ def query_globus(
 
         if printvar is not None:
             for k, g in enumerate(page.get("gmeta")):
-
                 print_dict = {
                     "total": page.get("total"),
                     "subject": g["subject"],
                 }
 
-                for var in printvar.split(','):
+                for var in printvar.split(","):
                     if var in g["entries"][0]["content"]:
-                        print_dict.update({
-                            var: g["entries"][0]["content"][var],
-                        })
+                        print_dict.update(
+                            {
+                                var: g["entries"][0]["content"][var],
+                            }
+                        )
                     elif var in page and var != "gmeta":
-                        print_dict.update({
-                            var: page[var],
-                        })
+                        print_dict.update(
+                            {
+                                var: page[var],
+                            }
+                        )
 
-
-                print (json.dumps(print_dict))
+                print(json.dumps(print_dict))
 
                 if k >= 10:
-                   break
+                    break
+
 
 @app.command()
 def check_task(
@@ -330,19 +340,21 @@ def check_task(
 ) -> None:
     """Check the globus task ids."""
     check_ingest_tasks(
-        task_id = task_id,
-        db_file = db_file,
-        update = update,
+        task_id=task_id,
+        db_file=db_file,
+        update=update,
     )
 
 
 @app.callback()
 def main(ctx: typer.Context) -> None:
     """Add the tip for more filter functions."""
-    if ctx.invoked_subcommand == "query-globus" and (
-        "--help" in sys.argv or "-h" in sys.argv):
-        print ("\n[bold red]Attention:[/bold red] more globus filters can " +
-            "be applied by [green]--keyword=value::filter_option[/green]")
+    if ctx.invoked_subcommand == "query-globus" and ("--help" in sys.argv or "-h" in sys.argv):
+        print(
+            "\n[bold red]Attention:[/bold red] more globus filters can "
+            + "be applied by [green]--keyword=value::filter_option[/green]"
+        )
+
 
 if __name__ == "__main__":
     app()
