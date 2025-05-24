@@ -1,0 +1,68 @@
+[
+  {
+  "index_name": "ANL",
+  "CMIP3":
+  {
+    "datasets":{"Queried":8899, "Ingested": 8899, "Checked":0},
+    "files":{"Queried":8899, "Ingested": 8899, "Checked":0}
+  },
+  "CMIP5":
+  {
+    "datasets":{"Queried":8899, "Ingested": 8899, "Checked":0},
+    "files":{"Queried":8899, "Ingested": 8899, "Checked":0}
+  },
+  "CMIP6":
+  {
+    "datasets":{"Queried":8899, "Ingested": 8899, "Checked":0},
+    "files":{"Queried":8899, "Ingested": 8899, "Checked":0}
+  },
+  "CREATE-IP":{},
+  "e3sm-supplement":{},
+  "GeoMIP":{},
+  "LUCID":{},
+  "TAMIP":{}},
+
+  {"index_name": "LLNL",
+  "CMIP3":
+  {
+    "datasets":{"Queried":8899, "Ingested": 8899, "Checked":0},
+    "files":{"Queried":8899, "Ingested": 8899, "Checked":0}
+  },
+  "CMIP5":
+  {
+    "datasets":{"Queried":8899, "Ingested": 8899, "Checked":0},
+    "files":{"Queried":8899, "Ingested": 8899, "Checked":0}
+  },
+  "CMIP6":
+  {
+    "datasets":{"Queried":8899, "Ingested": 8899, "Checked":0},
+    "files":{"Queried":8899, "Ingested": 8899, "Checked":0}
+  },
+  "CREATE-IP":{},
+  "e3sm-supplement":{},
+  "GeoMIP":{},
+  "LUCID":{},
+  "TAMIP":{}},
+
+  {"index_name": "ORNL",
+  "CMIP3":
+  {
+    "datasets":{"Queried":8899, "Ingested": 8899, "Checked":0},
+    "files":{"Queried":8899, "Ingested": 8899, "Checked":0}
+  },
+  "CMIP5":
+  {
+    "datasets":{"Queried":8899, "Ingested": 8899, "Checked":0},
+    "files":{"Queried":8899, "Ingested": 8899, "Checked":0}
+  },
+  "CMIP6":
+  {
+    "datasets":{"Queried":8899, "Ingested": 8899, "Checked":0},
+    "files":{"Queried":8899, "Ingested": 8899, "Checked":0}
+  },
+  "CREATE-IP":{},
+  "e3sm-supplement":{},
+  "GeoMIP":{},
+  "LUCID":{},
+  "TAMIP":{}}
+]

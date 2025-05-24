@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 
 import ntplib
-from ntplib import NTPException
 import requests
+from ntplib import NTPException
 
 
 def create_lock(lockfile_path: str) -> int:
@@ -59,7 +59,7 @@ def get_utc_time_from_server(ahead_minutes: int = 3) -> str:
                 response = requests.get(api, timeout=5)
                 data = response.json()
 
-                print (data)
+                utc_time = datetime.datetime.now(datetime.timezone.utc)
                 if 'datetime' in data:
                      utc_time = data["datetime"]  # 2025-04-09T19:42:34.490293+00:00
                 if 'dateTime' in data:

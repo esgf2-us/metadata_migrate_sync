@@ -1,0 +1,22 @@
+[
+  {
+    "index_name": "STAGE",
+    "query string": "{\"data\": {\"q\": \"*\", \"sort\": [{\"field_name\": \"id\", \"order\": \"asc\"}], \"filters\": [{\"field_name\": \"project\", \"values\": [\"DRCDP\"], \"type\": \"match_all\"}, {\"field_name\": \"_timestamp\", \"values\": [{\"from\": \"*\", \"to\": \"2025-03-16T00:00:00Z\"}], \"type\": \"range\"}], \"limit\": 1000, \"offset\": 0}}",
+    "start time": "2025-03-29 22:58:01.436294",
+    "stop time": "2025-03-29 23:06:22.989653",
+    "numFound_first": "5727",
+    "numFound_last": "5727",
+    "page queried": 6,
+    "page ingested": 6,
+    "page skipped": 0,
+    "page checked": 6,
+    "record skipped": 0,
+    "record total": 5727,
+    "source_index_id": "c7cc5d1e-5740-49c2-aa10-fe31f3bcb035",
+    "ingest_index_id": "a8ef4320-9e5a-4793-837b-c45161ca1845",
+    "cmd_line": "/home/minxu/bin/app.py sync stage public DRCDP --prod",
+    "hostname": "fedora",
+    "error": "no error",
+    "restart": "2025-03-29 19:06:21,917 - get_offset - INFO - The query is restart in the next cursormark\n"
+  }
+]

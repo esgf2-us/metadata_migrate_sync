@@ -1,0 +1,22 @@
+[
+  {
+    "index_name": "STAGE",
+    "query string": "{\"data\": {\"q\": \"*\", \"filters\": [{\"field_name\": \"project\", \"values\": [\"obs4MIPs\"], \"type\": \"match_all\"}, {\"field_name\": \"_timestamp\", \"values\": [{\"from\": \"*\", \"to\": \"2025-03-16T00:00:00Z\"}], \"type\": \"range\"}], \"limit\": 1000}}",
+    "start time": "2025-03-30 02:19:12.268231",
+    "stop time": "2025-03-30 02:19:14.470658",
+    "numFound_first": "1367",
+    "numFound_last": "1367",
+    "page queried": 2,
+    "page ingested": 2,
+    "page skipped": 0,
+    "page checked": 2,
+    "record skipped": 0,
+    "record total": 1367,
+    "source_index_id": "3cfaa44b-e549-487e-8058-5923aaf095b4",
+    "ingest_index_id": "a8ef4320-9e5a-4793-837b-c45161ca1845",
+    "cmd_line": "/home/minxu/bin/app.py sync stage public obs4MIPs --prod",
+    "hostname": "fedora",
+    "error": "no error",
+    "restart": "no restart info"
+  }
+]

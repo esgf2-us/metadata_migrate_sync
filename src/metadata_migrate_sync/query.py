@@ -123,8 +123,8 @@ class SolrQuery(BaseQuery):
 
     @staticmethod
     def _make_request(
-        url: str, 
-        params: dict[str, Any], 
+        url: str,
+        params: dict[str, Any],
         is_test: bool = False
     ) -> tuple[dict[str, Any], float, str] | None | int:
         """Make an HTTP GET request with retry logic.
