@@ -187,7 +187,7 @@ def metadata_sync(
             {
                 "type": "match_all",
                 "field_name": "project",
-                "values": [project.value],
+                "values": ["CMIP6-E3SM-Ext"] if project.value == "e3sm" else [project.value],
             },
         ],
         "sort_field": "id",
@@ -213,8 +213,6 @@ def metadata_sync(
     else:
         search_dict["limit"] = 20
         maxpage = 2
-
-
 
     gq = GlobusQuery(
         end_point=prov.source_index_id,
