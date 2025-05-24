@@ -41,6 +41,7 @@ class SolrQuery(BaseQuery):
     """query solr index."""
 
     query: dict[str, Any]
+    skip_prov: bool = False
 
     _restart: bool = False
     _review: bool = False
@@ -171,7 +172,8 @@ class SolrQuery(BaseQuery):
 
         except RequestException as e:
             logger.error(f"Request failed at {url}: {e}")
-            return None
+            #return None
+            raise RequestException
 
     def run(self) -> Generator[Any, None, None]:
         """Query solr index in a paginated manner.
@@ -183,13 +185,18 @@ class SolrQuery(BaseQuery):
         logger = provenance.get_logger(__name__)
 
         while True:
+
             result = self._make_request(self.end_point, self.query)
 
             if not result:
                 break
 
             response_json, response_time, response_url = result
-            self.prov_collect(response_url, response_time, response_json)
+            if self.skip_prov:
+                logger.info("skip the provenance and database update for solr query")
+                self._numFound = response_json.get("response").get("numFound")
+            else:
+                self.prov_collect(response_url, response_time, response_json)
 
             docs = response_json.get("response", {}).get("docs", [])
             yield docs
@@ -443,7 +450,6 @@ class GlobusQuery(BaseQuery):
         sq["filters"] = self.query["filters"]
 
         page_size = self.query["limit"]
-        offset = self.query["offset"]
 
         total_returned = 0
 
@@ -473,6 +479,7 @@ class GlobusQuery(BaseQuery):
 
         if self.paginator == "post":
 
+            offset = self.query["offset"]
             max_retries = 3
             sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
             while True:

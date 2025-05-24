@@ -23,7 +23,8 @@ from metadata_migrate_sync.check_ingest_tasks import check_ingest_tasks
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
-from metadata_migrate_sync.query import GlobusQuery
+from metadata_migrate_sync.query import GlobusQuery, SolrQuery
+from metadata_migrate_sync.solr import SolrIndexes
 from metadata_migrate_sync.sync import metadata_sync
 from metadata_migrate_sync.util import create_lock, release_lock
 
@@ -87,6 +88,7 @@ def migrate(
     project: str = typer.Argument(help="project name", callback=_validate_project),
     meta: str = typer.Option(help="metadata type", callback=_validate_meta),
     prod: bool = typer.Option(help="production run", default=False),
+    final: bool = typer.Option(help="final migration", default=False),
 ) -> None:
     """Migrate documents in solr index to the globus index.
 
@@ -98,6 +100,7 @@ def migrate(
         metatype=meta,
         project=project,
         production=prod,
+        final=final,
     )
 
 def _validate_tgt_ep_all(ep: str) -> str:
@@ -356,6 +359,127 @@ def main(ctx: typer.Context) -> None:
         "--help" in sys.argv or "-h" in sys.argv):
         print ("\n[bold red]Attention:[/bold red] more globus filters can " +
             "be applied by [green]--keyword=value::filter_option[/green]")
+
+@app.command()
+def compare_solr_globus(
+    source_ep: str = typer.Argument(
+        help="source end point name", callback=_validate_src_ep
+    ),
+    target_ep: str = typer.Argument(
+        help="target end point name", callback=_validate_tgt_ep
+    ),
+    project: str = typer.Argument(help="project name", callback=_validate_project),
+    institution_id: str = typer.Argument(help="institution_id"),
+    data_node: str = typer.Argument(help="data_node"),
+    meta: str = typer.Option(help="metadata type", callback=_validate_meta),
+) -> None:
+
+    from itertools import zip_longest
+
+    solr_index_id = SolrIndexes.indexes[source_ep].index_id
+    solr_index_type = SolrIndexes.indexes[source_ep].index_type
+    meta_type = meta
+
+    client_name, index_name = GlobusClient.get_client_index_names(target_ep, project.value)
+    _globus_index_id = GlobusClient.globus_clients[client_name].indexes[index_name]
+
+    solr_search_dict = {
+        "sort": "id asc",
+        "rows": 1500,
+        "cursorMark": "*",
+        "wt": "json",
+        "q": "project:" + project.value,
+        "fq": ["institution_id:"+institution_id, "data_node:"+data_node, "_timestamp:[* TO 2025-03-16T00:00:00Z]"],
+    }
+
+    sq = SolrQuery(
+        end_point=f"{solr_index_id}/{solr_index_type}/{meta_type}/select",
+        ep_type=solr_index_type,
+        ep_name=source_ep,
+        project=project,
+        query=solr_search_dict,
+        skip_prov=True,
+    )
+
+
+
+    globus_query = {
+        "q": "*",
+        "filters": [
+            {
+                "type": "match_all",
+                "field_name": "project",
+                "values": [project.value]
+            },
+            {
+                "type": "match_all",
+                "field_name": "type",
+                "values": [meta.capitalize()[:-1]]
+            },
+            {
+                "type": "match_all",
+                "field_name": "institution_id",
+                "values": [institution_id]
+            },
+            {
+                "type": "match_all",
+                "field_name": "data_node",
+                "values": [data_node]
+            },
+            {
+                "type": "range",
+                "field_name": "_timestamp",
+                "values": [{"from": "*", "to": "2025-03-16T00:00:00Z"}]
+            }
+        ],
+        "limit": 1500
+    }
+
+    gq = GlobusQuery(
+        end_point=_globus_index_id,
+        ep_type="globus",
+        ep_name=target_ep,
+        project=project,
+        query=globus_query,
+        generator=True,
+        paginator="scroll",
+        skip_prov=True,
+    )
+
+    s_left = set()
+    g_left = set()
+
+
+    for num, (page_s, page_g) in enumerate(zip_longest(sq.run(), gq.run())):
+
+        if page_g is not None:
+            print ("num =", num, page_g["total"], sq._numFound)
+        else:
+            print ("num =", num)
+
+        s_ids = {doc["id"] for doc in page_s} if page_s is not None else set()
+        g_ids = {gmeta["subject"] for gmeta in page_g["gmeta"]} if page_g is not None else set()
+
+        ss_ids = s_ids | s_left
+        gg_ids = g_ids | g_left
+        s_left = ss_ids - gg_ids
+        g_left = gg_ids - ss_ids
+
+
+        #for doc in page_s:
+        #    print (doc["institution_id"])
+
+        #for gmeta in page_g["gmeta"]:
+        #    print (gmeta["entries"][0]["content"]["institution_id"])
+        #break
+
+
+        print (len(s_left))
+        print (len(g_left))
+
+    print (len(g_left))
+    with open(f'missing_{meta}_{project}_{institution_id}_{data_node}.json', 'w') as f:
+        json.dump(list(g_left), f)  # Convert set to list first
 
 if __name__ == "__main__":
     app()
