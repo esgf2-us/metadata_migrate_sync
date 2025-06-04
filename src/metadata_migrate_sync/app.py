@@ -14,6 +14,7 @@ import datetime
 import json
 import pathlib
 import sys
+import time
 from enum import Enum
 
 import typer
@@ -27,6 +28,8 @@ from metadata_migrate_sync.query import GlobusQuery, SolrQuery
 from metadata_migrate_sync.solr import SolrIndexes
 from metadata_migrate_sync.sync import metadata_sync
 from metadata_migrate_sync.util import create_lock, release_lock
+
+from metadata_migrate_sync.transfer import globus_transfer, paginate_json
 
 sys.setrecursionlimit(10000)
 
@@ -557,6 +560,53 @@ def compare_solr_globus(
     print (len(g_left))
     with open(f'missing_{meta}_{project}_{institution_id}_{data_node}.json', 'w') as f:
         json.dump(list(g_left), f)  # Convert set to list first
+
+@app.command()
+def transfer(
+    globus_ep_source: str = typer.Argument(help="source globus"),
+    globus_ep_target: str = typer.Argument(help="target globus"), 
+    project: str = typer.Argument(help="project name used for file name"),
+    json_file: str = typer.Argument(help="json file"),
+    json_type: str = typer.Argument(help="json file type"),
+    page_start: int = typer.Option(0, help="start page"),
+    per_page: int = typer.Option(5000, help="items per page"),
+) -> None:
+    """Transfer files from one globus ep to another ep."""
+
+    page = page_start 
+
+    while True:
+        page = page + 1
+        try:
+            result = paginate_json(
+                json_file,
+                page=page,
+                per_page=per_page,
+                json_type=json_type,
+                )
+
+            if len(result["items"]) == 0:
+                break
+
+            #-file_paths = []
+            #-for item in result["items"]:
+            #-    file_paths.append(item["local_path"])
+            file_paths = result["items"]
+
+            ep_between = f"{globus_ep_source}-{globus_ep_target}"
+            globus_transfer(
+                globus_ep_source,
+                globus_ep_target,
+                file_paths,
+                batch_n=page,
+                transfer_label=f'prod-{ep_between}-{json_type}_{project}'
+            )
+
+            time.sleep(30)
+
+        except Exception as e:
+            print (f"No more page left {e}")
+            break
 
 if __name__ == "__main__":
     app()

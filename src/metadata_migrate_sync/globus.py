@@ -8,6 +8,7 @@ from globus_sdk import (
     NativeAppAuthClient,
     RefreshTokenAuthorizer,
     SearchClient,
+    TransferClient,
     SearchQuery,
 )
 from globus_sdk.tokenstorage import SimpleJSONFileAdapter
@@ -102,6 +103,54 @@ Globus will generate a code which you must copy and paste here and then hit <ent
     )
     search_client = SearchClient(authorizer=authorizer)
     return search_client
+
+# from Lucasz and Nate code with some minor changes
+def get_authorized_transfer_client(
+    app_client_id: UUID | str, token_name: str = "token.json"  # noqa S107
+) -> TransferClient:
+    """Return a transfer client authorized to make transfers."""
+    config_path = pathlib.Path.home() / ".ssh"
+    config_path.mkdir(parents=True, exist_ok=True)
+    token_adapter = SimpleJSONFileAdapter(config_path / token_name)
+    app_client = NativeAppAuthClient(app_client_id)
+
+    if token_adapter.file_exists():
+        tokens = token_adapter.get_token_data("transfer.api.globus.org")
+    else:
+        app_client.oauth2_start_flow(
+            requested_scopes=["urn:globus:auth:scope:transfer.api.globus.org:all"],
+            refresh_tokens=True,
+        )
+        authorize_url = app_client.oauth2_get_authorize_url()
+        print(
+            f"""
+All interactions with Globus must be authorized. To ensure that we have permission to faciliate your transfer,
+please open the following link in your browser.
+
+{authorize_url}
+
+You will have to login (or be logged in) to your Globus account.
+Globus will also request that you give a label for this authorization.
+You may pick anything of your choosing. After following the instructions in your browser,
+Globus will generate a code which you must copy and paste here and then hit <enter>.\n"""
+        )
+        auth_code = input("> ").strip()
+        token_response = app_client.oauth2_exchange_code_for_tokens(auth_code)
+        token_adapter.store(token_response)
+        tokens = token_response.by_resource_server["transfer.api.globus.org"]
+
+    authorizer = RefreshTokenAuthorizer(
+        tokens["refresh_token"],
+        app_client,
+        access_token=tokens["access_token"],
+        expires_at=tokens["expires_at_seconds"],
+        on_refresh=token_adapter.on_refresh,
+    )
+    transfer_client = TransferClient(
+        authorizer=authorizer,
+    )
+    return transfer_client
+
 
 
 class ClientModel(BaseModel):
@@ -220,6 +269,18 @@ class GlobusClient:
                 index_name = "test"
 
         return client_name, index_name
+
+
+    @classmethod
+    def get_transfer_client(cls):
+        """Get a transfer client id."""
+
+        client_id = cls.globus_clients["prod-migration"].app_client_id
+
+        tc = get_authorized_transfer_client(client_id, 'test_transfer.json')
+ 
+        return tc
+
 
     @classmethod
     def get_client(cls, name: str = "test") -> ClientModel:
