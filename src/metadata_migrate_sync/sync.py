@@ -182,12 +182,14 @@ def metadata_sync(
     logger.info(f"initialized the sqlite database at {prov.db_file}")
 
     # query generator
+    # for e3sm, "values": ["CMIP6-E3SM-Ext"] if project.value == "e3sm" else [project.value]
+    # but change to e3sm as it is needed by Metagrid and confirmed by Sasha
     search_dict = {
         "filters":[
             {
                 "type": "match_all",
                 "field_name": "project",
-                "values": ["CMIP6-E3SM-Ext"] if project.value == "e3sm" else [project.value],
+                "values": [project.value],
             },
         ],
         "sort_field": "id",
