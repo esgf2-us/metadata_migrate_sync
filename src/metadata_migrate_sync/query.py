@@ -440,7 +440,8 @@ class GlobusQuery(BaseQuery):
         gc = GlobusClient()
         cm = gc.get_client(self.ep_name)
         sc = cm.search_client
-        sq = cm.search_query
+        #sq = cm.search_query
+        sq = SearchQuery("")
 
 
         _globus_index_id = cm.indexes[index_name]

@@ -27,9 +27,8 @@ from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.query import GlobusQuery, SolrQuery
 from metadata_migrate_sync.solr import SolrIndexes
 from metadata_migrate_sync.sync import metadata_sync
-from metadata_migrate_sync.util import create_lock, release_lock
-
 from metadata_migrate_sync.transfer import globus_transfer, paginate_json
+from metadata_migrate_sync.util import create_lock, release_lock
 
 sys.setrecursionlimit(10000)
 
@@ -440,6 +439,233 @@ def main(ctx: typer.Context) -> None:
         print ("\n[bold red]Attention:[/bold red] more globus filters can " +
             "be applied by [green]--keyword=value::filter_option[/green]")
 
+
+@app.command()
+def compare_globus(
+    globus_ep: str = typer.Argument(
+        help="source end point name", callback=_validate_tgt_ep
+    ),
+    project: str = typer.Argument(help="project name", callback=_validate_project),
+    field_name: str = typer.Argument(help="field_name"),
+    field_value: str = typer.Argument(help="field_value"),
+    data_node_1: str = typer.Argument(help="data_node_1"),
+    data_node_2: str = typer.Argument(help="data_node_2"),
+) -> None:
+    """Compare documents in a globus index."""
+
+    from itertools import zip_longest
+    
+    client_name, index_name = GlobusClient.get_client_index_names(globus_ep, project.value)
+    _globus_index_id = GlobusClient.globus_clients[client_name].indexes[index_name]
+
+    if data_node_1 == "ornl":
+        data_node_list_1 = ["esgf-node.ornl.gov"]
+    elif data_node_1 == "anl":
+        data_node_list_1 = ["eagle.alcf.anl.gov"]
+    elif data_node_1 == "llnl":
+        data_node_list_1 = [
+            "aims3.llnl.gov",
+            "esgf-data1.llnl.gov",
+            "esgf-data2.llnl.gov",
+        ]
+    else:
+        raise ValueError("wrong data_mode_1")
+
+
+    if data_node_2 == "ornl":
+        data_node_list_2 = ["esgf-node.ornl.gov"]
+    elif data_node_2 == "anl":
+        data_node_list_2 = ["eagle.alcf.anl.gov"]
+    elif data_node_2 == "llnl":
+        data_node_list_2 = [
+            "aims3.llnl.gov",
+            "esgf-data1.llnl.gov",
+            "esgf-data2.llnl.gov",
+        ]
+    else:
+        raise ValueError("wrong data_mode_2")
+
+    globus_query_1 = {
+        "@version": "query#1.0.0",
+        "q": "*",
+        "filters": [
+            {
+                "type": "match_all",
+                "field_name": "project",
+                "values": [project.value]
+            },
+            {
+                "type": "match_all",
+                "field_name": "type",
+                "values": ["File"]
+            },
+            {
+                "type": "match_all",
+                "field_name": field_name,
+                "values": [field_value]
+            },
+            {
+                "type": "match_any",
+                "field_name": "data_node",
+                "values": data_node_list_1
+            },
+        ],
+        "limit": 5000
+    }
+
+    globus_query_2 = {
+        "@version": "query#1.0.0",
+        "q": "*",
+        "filters": [
+            {
+                "type": "match_all",
+                "field_name": "project",
+                "values": [project.value]
+            },
+            {
+                "type": "match_all",
+                "field_name": "type",
+                "values": ["File"]
+            },
+            {
+                "type": "match_all",
+                "field_name": field_name,
+                "values": [field_value]
+            },
+            {
+                "type": "match_any",
+                "field_name": "data_node",
+                "values": data_node_list_2
+            },
+        ],
+        "limit": 5000
+    }
+
+    gq_1 = GlobusQuery(
+        end_point=_globus_index_id,
+        ep_type="globus",
+        ep_name=globus_ep,
+        project=project,
+        query=globus_query_1,
+        generator=True,
+        paginator="scroll",
+        skip_prov=True,
+    )
+
+    gq_2 = GlobusQuery(
+        end_point=_globus_index_id,
+        ep_type="globus",
+        ep_name=globus_ep,
+        project=project,
+        query=globus_query_2,
+        generator=True,
+        paginator="scroll",
+        skip_prov=True,
+    )
+
+    s_left = set()
+    g_left = set()
+
+    sbase = set()
+    ggbase = set()
+
+    missing_files_sleft=set()
+    missing_files_gleft=set()
+
+    for num, (page_s, page_g) in enumerate(zip_longest(gq_1.run(), gq_2.run())):
+
+        if page_g is not None and page_s is not None:
+            print ("num =", num, page_s["total"], page_g["total"])
+        else:
+            print ("num =", num)
+
+        #-s_ids = {gmeta["subject"].split("|")[0]: gmeta["entries"][0]["url"]
+        #-    for gmeta in page_s["gmeta"]} if page_s is not None else set()
+        #-g_ids = {gmeta["subject"].split("|")[0]: gmeta["entries"][0]["url"]
+        #-    for gmeta in page_g["gmeta"]} if page_g is not None else set()
+
+        #-s_ids = {gmeta["subject"].split("|")[0] for gmeta in page_s["gmeta"]} if page_s is not None else set()
+        #-g_ids = {gmeta["subject"].split("|")[0] for gmeta in page_g["gmeta"]} if page_g is not None else set()
+
+        # Extract {base_id: full_subject} mappings
+        if page_s is not None:
+            s_entries = {
+                gmeta["subject"].split("|")[0]: gmeta["subject"]
+                for gmeta in page_s["gmeta"]
+            }
+        else:
+            s_entries = {}
+
+        if page_g is not None:
+            g_entries = {
+                gmeta["subject"].split("|")[0]: gmeta["subject"]
+                for gmeta in page_g["gmeta"]
+            }
+            gbase={gmeta["subject"] for gmeta in page_g["gmeta"]}
+        else:
+            g_entries = {}
+
+        #-print (len(s_entries.keys()), len(g_entries.keys()))
+        ss_ids = s_entries.keys() | s_left
+        gg_ids = g_entries.keys() | g_left
+        #-ss_ids = s_ids | s_left
+        #-gg_ids = g_ids | g_left
+        s_left = ss_ids - gg_ids
+        g_left = gg_ids - ss_ids
+
+        sbase = set(s_entries.values()) | sbase
+        ggbase = gbase| ggbase
+
+
+        #for doc in page_s:
+        #    print (doc["institution_id"])
+
+        #for gmeta in page_g["gmeta"]:
+        #    print (gmeta["entries"][0]["content"]["institution_id"])
+        #break
+
+
+        if missing_files_gleft: 
+            to_remove = {item for item in missing_files_gleft 
+                        if item.split("|")[0] not in g_left}
+            missing_files_gleft -= to_remove  # Remove all at once
+        
+        if missing_files_sleft:
+            to_remove = {item for item in missing_files_sleft 
+                        if item.split("|")[0] not in s_left}
+            missing_files_sleft -= to_remove
+
+        missing_files_gleft.update(
+            g_entries[base_id]
+            for base_id in g_left
+            if base_id in g_entries  # Ensure base_id is in current page
+        )
+
+        missing_files_sleft.update(
+            s_entries[base_id]
+            for base_id in s_left
+            if base_id in s_entries  # Ensure base_id is in current page
+        )
+
+        print (len(s_left))
+        print (len(g_left))
+
+    print (len(g_left))
+    print (len(s_left))
+
+    print ("base")
+    print (len(sbase))
+    print (len(ggbase))
+
+    with open("test_kiost_duplicated.json", "w") as fw:
+         json.dump(list(ggbase), fw)
+
+    with open(f'missing_{project}_{field_value}_{data_node_1}.json', 'w') as f:
+        json.dump(list(missing_files_gleft), f)
+    with open(f'missing_{project}_{field_value}_{data_node_2}.json', 'w') as f:
+        json.dump(list(missing_files_sleft), f)
+
+
 @app.command()
 def compare_solr_globus(
     source_ep: str = typer.Argument(
@@ -453,6 +679,7 @@ def compare_solr_globus(
     data_node: str = typer.Argument(help="data_node"),
     meta: str = typer.Option(help="metadata type", callback=_validate_meta),
 ) -> None:
+    """Compare documents bwtween a solr and globus index."""
 
     from itertools import zip_longest
 
@@ -564,7 +791,7 @@ def compare_solr_globus(
 @app.command()
 def transfer(
     globus_ep_source: str = typer.Argument(help="source globus"),
-    globus_ep_target: str = typer.Argument(help="target globus"), 
+    globus_ep_target: str = typer.Argument(help="target globus"),
     project: str = typer.Argument(help="project name used for file name"),
     json_file: str = typer.Argument(help="json file"),
     json_type: str = typer.Argument(help="json file type"),
@@ -573,7 +800,7 @@ def transfer(
 ) -> None:
     """Transfer files from one globus ep to another ep."""
 
-    page = page_start 
+    page = page_start
 
     while True:
         page = page + 1

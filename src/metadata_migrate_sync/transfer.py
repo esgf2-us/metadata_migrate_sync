@@ -1,12 +1,9 @@
-from globus_sdk import TransferClient, TransferData
-from metadata_migrate_sync.globus import GlobusClient
-import ijson
-from typing import Literal, Any
 import pathlib
-import os
 import subprocess
-import time
+from typing import Literal
 
+import ijson
+from globus_sdk import TransferClient
 
 globus_endpoints = {
     "llnl": "1889ea03-25ad-4f9f-8110-1ce8833a9d7e",
@@ -30,7 +27,7 @@ def paginate_json(file_path: str, page: int, per_page: int, json_type:str):
     start = (page - 1) * per_page
     end = start + per_page
     items = []
-    
+
     if json_type == "RootDict":
         with open(file_path, 'rb') as f:
             timestamps = ijson.kvitems(f, '')
@@ -41,7 +38,7 @@ def paginate_json(file_path: str, page: int, per_page: int, json_type:str):
                         items.append(item["local_path"])
                     if i >= end:
                         break
-    else: # RootArray 
+    else: # RootArray
         with open(file_path, 'rb') as f:
             for i, item in enumerate(ijson.items(f, 'item')):
                 if start <= i < end:
@@ -63,14 +60,14 @@ def _activate_ep(tc: TransferClient) -> None:
         else:
             print(f"Successfully activate {ep}")
 
-    
+
 def _build_globus_transfer(
-    source_ep: str, 
+    source_ep: str,
     target_ep: str,
     file_name: str,
-    label: str, 
+    label: str,
     options: str,
-    batch_n: int, 
+    batch_n: int,
 ) -> list[str]:
 
     return [
@@ -80,14 +77,14 @@ def _build_globus_transfer(
         '--batch',
         f'{file_name}',
         '--label',
-        f'{label}-{batch_n}', 
+        f'{label}-{batch_n}',
         f'{options}',
     ]
 
 
 def _run(batch_n: int, cmd: list[str]) -> None:
 
-    print(f"Transferring files...")
+    print("Transferring files...")
     try:
         # Using shell=True for input redirection
         result = subprocess.run(' '.join(cmd), shell=True, check=True)
@@ -99,7 +96,7 @@ def _run(batch_n: int, cmd: list[str]) -> None:
     #-    os.remove('globus_batch.txt')
 
 def globus_transfer(
-    source_epname: Literal["llnl", "anl"], 
+    source_epname: Literal["llnl", "anl"],
     target_epname: Literal["ornl", "ornl-test"],
     path_list: list[str],
     batch_n: int,
@@ -108,7 +105,7 @@ def globus_transfer(
 
     #-tc: TransferClient = GlobusClient.get_transfer_client()
 
-    #-_activate_ep(tc) 
+    #-_activate_ep(tc)
 
     source_ep = globus_endpoints[source_epname]
     target_ep = globus_endpoints[target_epname]
@@ -116,7 +113,7 @@ def globus_transfer(
     #-td = TransferData(tc,
     #-    source_ep,
     #-    target_ep,
-    #-    encrypt_data = True, 
+    #-    encrypt_data = True,
     #-    verify_checksum = True,
     #-    preserve_timestamp = True,
     #-    fail_on_quota_errors = True,
@@ -130,7 +127,7 @@ def globus_transfer(
 
 
     batch_name = f"{transfer_label}_batch_{batch_n}.txt"
-    
+
     with open(batch_name, 'w') as batch_file:
         for rpath in path_list:
 
@@ -142,8 +139,8 @@ def globus_transfer(
             batch_file.write(f"{src_file}  {dst_file}\n")
 
     cmd = _build_globus_transfer(
-        source_ep, 
-        target_ep, 
+        source_ep,
+        target_ep,
         batch_name,
         transfer_label,
         '--skip-source-errors -s exists',

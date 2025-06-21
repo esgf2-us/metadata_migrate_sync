@@ -8,8 +8,8 @@ from globus_sdk import (
     NativeAppAuthClient,
     RefreshTokenAuthorizer,
     SearchClient,
-    TransferClient,
     SearchQuery,
+    TransferClient,
 )
 from globus_sdk.tokenstorage import SimpleJSONFileAdapter
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -278,7 +278,7 @@ class GlobusClient:
         client_id = cls.globus_clients["prod-migration"].app_client_id
 
         tc = get_authorized_transfer_client(client_id, 'test_transfer.json')
- 
+
         return tc
 
 
