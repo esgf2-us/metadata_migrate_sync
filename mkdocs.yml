@@ -32,7 +32,9 @@ theme:
 
 extra_javascript:
   - https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js
+  - https://unpkg.com/tablesort@5.3.0/dist/tablesort.min.js
   - javascripts/extra.js
+  - javascripts/tablesort.js
 
 extra_css:
   - https://unpkg.com/tabulator-tables@6.3.1/dist/css/tabulator_bootstrap5.min.css
@@ -106,5 +108,7 @@ nav:
        - Project verification: Validation/project_verification.md
        - Data node verification: Validation/data_node_verification.md
        - Institution id verification: Validation/institution_id_verification.md
+   - DataTransfer:
+       - TransferData/index.md
    - Notes:
        - Notes/notes.md

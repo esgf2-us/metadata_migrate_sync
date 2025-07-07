@@ -150,4 +150,3 @@ function load_json (title, proj, meta) {
         .catch(error => console.error('Error loading JSON data:', error));
 
 };
-
