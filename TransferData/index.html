@@ -24,7 +24,7 @@
     
     
       
-        <title>Index - Metadata Migrate and Sync</title>
+        <title>Data transfer and metadata replication - Metadata Migrate and Sync</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#two-steps-to-transfer-data-from-llnl-to-ornl" class="md-skip">
+        <a href="#purpose" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Index
+              Data transfer and metadata replication
             
           </span>
         </div>
@@ -759,7 +759,7 @@
           
   
   <span class="md-ellipsis">
-    Index
+    Data transfer and metadata replication
   </span>
   
 
@@ -770,7 +770,7 @@
         
   
   <span class="md-ellipsis">
-    Index
+    Data transfer and metadata replication
   </span>
   
 
@@ -790,16 +790,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#two-steps-to-transfer-data-from-llnl-to-ornl" class="md-nav__link">
-    <span class="md-ellipsis">
-      Two steps to transfer data from LLNL to ORNL
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Two steps to transfer data from LLNL to ORNL">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#purpose" class="md-nav__link">
     <span class="md-ellipsis">
       Purpose
@@ -807,8 +797,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#terms" class="md-nav__link">
     <span class="md-ellipsis">
       Terms
@@ -816,27 +806,22 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#two-phase-data-transfer" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#two-phases-of-data-transfer" class="md-nav__link">
     <span class="md-ellipsis">
-      Two phase data transfer
+      Two phases of data transfer
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#results" class="md-nav__link">
     <span class="md-ellipsis">
       Results
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -947,16 +932,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#two-steps-to-transfer-data-from-llnl-to-ornl" class="md-nav__link">
-    <span class="md-ellipsis">
-      Two steps to transfer data from LLNL to ORNL
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Two steps to transfer data from LLNL to ORNL">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#purpose" class="md-nav__link">
     <span class="md-ellipsis">
       Purpose
@@ -964,8 +939,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#terms" class="md-nav__link">
     <span class="md-ellipsis">
       Terms
@@ -973,27 +948,22 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#two-phase-data-transfer" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#two-phases-of-data-transfer" class="md-nav__link">
     <span class="md-ellipsis">
-      Two phase data transfer
+      Two phases of data transfer
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#results" class="md-nav__link">
     <span class="md-ellipsis">
       Results
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1015,37 +985,41 @@
   
 
 
-  <h1>Index</h1>
+  <h1>Data transfer and metadata replication</h1>
 
-<h2 id="two-steps-to-transfer-data-from-llnl-to-ornl">Two steps to transfer data from LLNL to ORNL<a class="headerlink" href="#two-steps-to-transfer-data-from-llnl-to-ornl" title="Permanent link">&para;</a></h2>
-<h3 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h3>
+<h2 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Find the missing NetCDF files on ORNL data node and transfer them</li>
 <li>Replicate all the data on LLNL data nodes to the ORNL data node</li>
 </ol>
-<h3 id="terms">Terms<a class="headerlink" href="#terms" title="Permanent link">&para;</a></h3>
-<p>LLNL metadata: any metadata in which the value of <code>data_node</code> is one of esgf-data1.llnl.gov, esgf-data2.llnl.gov, and aims3.llnl.gov
-ORNL metadata: any metadata in which the value of <code>data_node</code> is esgf-node.ornl.gov</p>
-<h3 id="two-phase-data-transfer">Two phase data transfer<a class="headerlink" href="#two-phase-data-transfer" title="Permanent link">&para;</a></h3>
+<h2 id="terms">Terms<a class="headerlink" href="#terms" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>LLNL metadata</strong>: any metadata in which the value of <code>data_node</code> is one of esgf-data1.llnl.gov, esgf-data2.llnl.gov, and aims3.llnl.gov</li>
+<li><strong>ORNL metadata</strong>: any metadata in which the value of <code>data_node</code> is esgf-node.ornl.gov</li>
+</ul>
+<h2 id="two-phases-of-data-transfer">Two phases of data transfer<a class="headerlink" href="#two-phases-of-data-transfer" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
-<p>Phase 1: Retrieve all data paths in the URLs of ORNL metadata and check if they exist on the ORNL data node and their sizes are not zero, if missing, find and transfer them from LLNL and ANL data nodes.</p>
+<p>Phase 1: Retrieve all data paths from the ORNL metadata URLs, 
+verify their existence on the ORNL data node, and ensure they have non-zero sizes. 
+For any missing or zero-size files, locate and transfer them from the LLNL and ANL data nodes.</p>
 <ul>
-<li>transferred: </li>
-<li>paths need to fix</li>
-<li>missing:  </li>
+<li>Missing files: <strong>557,560</strong></li>
+<li>Successfully transferred/found: <strong>547,123</strong></li>
+<li>Paths requiring fix: 46,500</li>
+<li>Files unavailable at DOE sites: 10,432  </li>
 </ul>
 </li>
 <li>
-<p>Phase 2: Find all LLNL metadata that ORNL does not have and retrieve their paths and transfer them from LLNL to ORNL</p>
+<p>Phase 2: Identify all LLNL metadata entries missing in ORNL, extract their data paths, 
+and transfer the corresponding files from LLNL to ORNL.</p>
 <ul>
-<li>transferred:</li>
-<li>paths need to fix</li>
-<li>missing:</li>
+<li>Successfully transferred/found: 158,796(CMIP6), 1588(input4MIPs), 5533(DRCDP), 9(CMIP6Plus):</li>
+<li>Files unavailable at DOE sites: 170</li>
 </ul>
 </li>
 </ul>
-<h3 id="results">Results<a class="headerlink" href="#results" title="Permanent link">&para;</a></h3>
+<h2 id="results">Results<a class="headerlink" href="#results" title="Permanent link">&para;</a></h2>
 <ul>
 <li>
 <p><a href="phase1/">Phase 1</a></p>
@@ -1076,7 +1050,7 @@ ORNL metadata: any metadata in which the value of <code>data_node</code> is esgf
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 7, 2025 17:09:04 EDT">2025-07-07</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="July 8, 2025 13:47:41 EDT">2025-07-08</span>
   </span>
 
     
@@ -1146,6 +1120,8 @@ ORNL metadata: any metadata in which the value of <code>data_node</code> is esgf
         <script src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
       
         <script src="https://unpkg.com/tablesort@5.3.0/dist/tablesort.min.js"></script>
+      
+        <script src="https://unpkg.com/tablesort@5.3.0/dist/sorts/tablesort.number.min.js"></script>
       
         <script src="../javascripts/extra.js"></script>
       
