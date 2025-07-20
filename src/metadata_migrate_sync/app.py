@@ -29,6 +29,7 @@ from metadata_migrate_sync.solr import SolrIndexes
 from metadata_migrate_sync.sync import metadata_sync
 from metadata_migrate_sync.transfer import globus_transfer, paginate_json
 from metadata_migrate_sync.util import create_lock, release_lock
+from metadata_migrate_sync.replica import metadata_replica
 
 sys.setrecursionlimit(10000)
 
@@ -337,8 +338,8 @@ def query_globus(
 
                 print (json.dumps(print_dict))
 
-                if k >= 10:
-                   break
+                #-if k >= 10:
+                #-   break
 
 @app.command()
 def check_task(
@@ -450,6 +451,7 @@ def compare_globus(
     field_value: str = typer.Argument(help="field_value"),
     data_node_1: str = typer.Argument(help="data_node_1"),
     data_node_2: str = typer.Argument(help="data_node_2"),
+    meta: str = typer.Option("File", help="metadata type"),
 ) -> None:
     """Compare documents in a globus index."""
 
@@ -497,7 +499,7 @@ def compare_globus(
             {
                 "type": "match_all",
                 "field_name": "type",
-                "values": ["File"]
+                "values": [meta]
             },
             {
                 "type": "match_all",
@@ -525,7 +527,7 @@ def compare_globus(
             {
                 "type": "match_all",
                 "field_name": "type",
-                "values": ["File"]
+                "values": [meta]
             },
             {
                 "type": "match_all",
@@ -660,9 +662,9 @@ def compare_globus(
     with open("test_kiost_duplicated.json", "w") as fw:
          json.dump(list(ggbase), fw)
 
-    with open(f'missing_{project}_{field_value}_{data_node_1}.json', 'w') as f:
+    with open(f'missing_{meta}_{project}_{field_value}_{data_node_1}.json', 'w') as f:
         json.dump(list(missing_files_gleft), f)
-    with open(f'missing_{project}_{field_value}_{data_node_2}.json', 'w') as f:
+    with open(f'missing_{meta}_{project}_{field_value}_{data_node_2}.json', 'w') as f:
         json.dump(list(missing_files_sleft), f)
 
 
@@ -834,6 +836,43 @@ def transfer(
         except Exception as e:
             print (f"No more page left {e}")
             break
+
+@app.command()
+def replica(
+    globus_ep: str = typer.Argument(
+        help="globus index", callback=_validate_tgt_ep
+    ),
+    project: str = typer.Argument(
+        help="project name", callback=_validate_project
+    ),
+
+    replica_json: str =  typer.Argument(
+        help="json file containing the document needed to replicate"
+    ),
+    meta: str = typer.Argument(
+        help="meta type: File or Dataset"
+    ),
+
+    src_data_node: str = typer.Argument(
+        help="source data node: llnl"
+    ),
+    dst_data_node: str = typer.Argument(
+        help="target data node: ornl"
+    ),
+
+) -> None:
+    """Replicate the metadata in the index by changing documents directly."""
+
+    metadata_replica(
+        globus_ep,
+        project,
+        replica_json,
+        meta,
+        src_data_node,
+        dst_data_node,
+    )
+
+    pass
 
 if __name__ == "__main__":
     app()

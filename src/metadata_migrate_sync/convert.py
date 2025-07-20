@@ -1,9 +1,14 @@
 """Document conversion module."""
+import datetime
+import re
 from typing import Any, Literal
 
 from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, FileDocs
 from metadata_migrate_sync.provenance import provenance
 
+# Precompile regex patterns once (module-level constants)
+_DOMAIN_PATTERN = re.compile(r'(?<=://)([^/:]+)(:\d+)?(/|$)')
+_UUID_PATTERN = re.compile(r'(?<=globus:)[^/]+(?=/)')  # Matches UUID only
 
 def convert_to_esgf_1_5(
     solr_doc: FileDocs | DatasetDocs | dict[str, Any],
@@ -37,3 +42,162 @@ def convert_to_esgf_1_5(
             return None
 
     return esgf_doc
+
+def _process_urls(
+    urls: list[str],
+    data_node: str,
+    globus_uuid: str,
+) -> list[str]:
+
+    new_uuid = globus_uuid
+
+    new_urls = []
+    for url in urls:
+        # Replace domain (keep port if exists)
+        new_url = _DOMAIN_PATTERN.sub(lambda m: data_node + m.group(2) + '/' if m.group(2) else data_node + '/', url)
+        # Replace UUID in globus URLs
+        if new_url.startswith('globus:'):
+            new_url = _UUID_PATTERN.sub(new_uuid, new_url)
+        new_urls.append(new_url)
+
+    return new_urls
+
+def replicate_gmeta(
+    gmeta: dict[str, Any],
+    metatype: Literal["Dataset", "File"],
+    source_data_node: Literal["llnl", "anl"],
+    target_data_node: Literal["ornl"],
+) -> dict[Any, Any]:
+    """
+    Replicates GMETA metadata for ESGF data replication between nodes.
+
+    Args:
+        gmeta: Original metadata dictionary
+        metatype: Type of metadata ("Dataset" or "File")
+        source_data_node: Source data node identifier
+        target_data_node: Target data node identifier
+
+    Returns:
+        Modified metadata dictionary for the target node
+    """
+    # Validate input parameters
+    if metatype not in ("Dataset", "File"):
+        raise ValueError(f"Invalid metatype: {metatype}")
+    if source_data_node not in ("llnl", "anl"):
+        raise ValueError(f"Invalid source_data_node: {source_data_node}")
+    if target_data_node != "ornl":
+        raise ValueError(f"Unsupported target_data_node: {target_data_node}")
+
+    # Define source and target mappings
+    DN_MAPPINGS = {
+        "llnl": ["esgf-data1.llnl.gov", "esgf-data2.llnl.gov", "aims3.llnl.gov"],
+        "anl": ["eagle.alcf.anl.gov"],
+        "ornl": ["esgf-node.ornl.gov"]
+    }
+
+    GLOBUS_IDS = {
+        "ornl": "dea29ae8-bb92-4c63-bdbc-260522c92fe8"
+    }
+
+    src_dn_list = DN_MAPPINGS[source_data_node]
+    tgt_dn_list = DN_MAPPINGS[target_data_node]
+    tgt_globus_id = GLOBUS_IDS[target_data_node]
+
+    if metatype == "File":
+        try:
+            # id, subject, data_node, url
+            subject_parts = gmeta["subject"].split('|')
+            gmeta["subject"] = f"{subject_parts[0]}|{tgt_dn_list[0]}"
+            gmeta["entries"][0]["content"]["id"] = gmeta["subject"]
+            gmeta["entries"][0]["content"]["data_node"] = tgt_dn_list[0]
+
+            newurl = _process_urls(
+                gmeta["entries"][0]["content"]["url"],
+                tgt_dn_list[0],
+                tgt_globus_id,
+            )
+            gmeta["entries"][0]["content"]["url"] = newurl
+            gmeta["entries"][0]["content"]["replica"] = True
+
+            #dataset_id
+            if "dataset_id" in gmeta["entries"][0]["content"]:
+                #mxu some dataset_id is list in some doc!!!
+                temp_dataset_id = gmeta["entries"][0]["content"]["dataset_id"]
+
+                if isinstance(temp_dataset_id, list):
+                    dataset_parts = temp_dataset_id[0].split('|')
+                else:
+                    dataset_parts = temp_dataset_id.split('|')
+                gmeta["entries"][0]["content"]["dataset_id"] = f"{dataset_parts[0]}|{tgt_dn_list[0]}"
+
+            # update timestamp
+            curtime = datetime.datetime.now(datetime.timezone.utc)
+            timestamp = curtime.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+            gmeta["entries"][0]["content"]["_timestamp"] = timestamp
+        except KeyError as e:
+            raise ValueError(f"Missing required field in gmeta: {e}")
+        return gmeta
+    else:
+        #subject id data_node, _timestampe replica=true
+        try:
+            # id, subject, data_node, replica
+            subject_parts = gmeta["subject"].split('|')
+            gmeta["subject"] = f"{subject_parts[0]}|{tgt_dn_list[0]}"
+            gmeta["entries"][0]["content"]["id"] = gmeta["subject"]
+            gmeta["entries"][0]["content"]["data_node"] = tgt_dn_list[0]
+
+            gmeta["entries"][0]["content"]["replica"] = True
+
+            # update timestamp
+            curtime = datetime.datetime.now(datetime.timezone.utc)
+            timestamp = curtime.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+            gmeta["entries"][0]["content"]["_timestamp"] = timestamp
+
+        except KeyError as e:
+            raise ValueError(f"Missing required field in gmeta: {e}")
+        return gmeta
+
+
+def _prepend_to_list_in_dict(
+    content_dict: dict[str,Any],
+    key: str,
+    value: Any
+) -> dict[str,Any]:
+    """Helper function to prepend a value to a list in a dictionary."""
+    if key in content_dict:
+        content_dict[key] = [value, *content_dict[key]]
+    else:
+        content_dict[key] = [value]
+
+def revise_gmeta(
+    gmeta: dict[str, Any],
+    revised_by: str,
+    revised_items: dict[str, Any],
+    revised_value: list[str],
+) -> dict[str, Any]:
+    """Revise the Gmeta data from ESGF."""
+
+    if len(revised_items.keys()) != len(revised_value):
+        raise ValueError("Wrong revised items or values")
+
+    for item, value in zip(list(revised_items.keys()), revised_value):
+        if item in gmeta["entries"][0]["content"]:
+            if revised_items["item"] == gmeta["entries"][0]["content"]["item"]:
+                gmeta["entries"][0]["content"]["item"] = value
+        else:
+            print(f"No {item} in the doc of {gmeta['subject']}")
+
+
+    # Get the content dictionary once to avoid repeated access
+    content = gmeta["entries"][0]["content"]
+
+    # Update revised_by
+    _prepend_to_list_in_dict(content, "_revised_by", revised_by)
+
+    # Update revised_item
+    _prepend_to_list_in_dict(content, "_revised_item", '::'.join(revised_items.keys()))
+
+    # Update timestamp
+    curtime = datetime.datetime.now(datetime.timezone.utc)
+    timestamp = curtime.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+    _prepend_to_list_in_dict(content, "_revised_timestamp", timestamp)

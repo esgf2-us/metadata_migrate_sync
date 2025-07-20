@@ -10,6 +10,7 @@ globus_endpoints = {
     "anl": "8896f38e-68d1-4708-bce4-b1b3a3405809",
     "ornl": "7399956e-a57b-4560-b3d7-a035ff42cad4",
     "ornl-test": "7399956e-a57b-4560-b3d7-a035ff42cad4",
+    "ornl-misc": "7399956e-a57b-4560-b3d7-a035ff42cad4",
 }
 
 
@@ -20,6 +21,7 @@ globus_path_prefix = {
     "anl": "/",
     "ornl": "/nl/themis/esgf/cli137/world-shared/globus/esg_dataroot",
     "ornl-test": "/nl/themis/esgf/cli137/mfx/Staged",
+    "ornl-misc": "/nl/themis/esgf/cli137/mfx/Staged_misc",
 }
 
 def paginate_json(file_path: str, page: int, per_page: int, json_type:str):
@@ -38,11 +40,18 @@ def paginate_json(file_path: str, page: int, per_page: int, json_type:str):
                         items.append(item["local_path"])
                     if i >= end:
                         break
-    else: # RootArray
+    elif json_type == "RootArray": # RootArray
         with open(file_path, 'rb') as f:
             for i, item in enumerate(ijson.items(f, 'item')):
                 if start <= i < end:
                     items.append(item["source_path"])
+                if i >= end:
+                    break
+    elif json_type == "RootList": 
+        with open(file_path, 'rb') as f:
+            for i, item in enumerate(ijson.items(f, 'item')):
+                if start <= i < end:
+                    items.append(item)
                 if i >= end:
                     break
     return {
@@ -148,7 +157,9 @@ def globus_transfer(
     )
 
     print (cmd)
-    _run(batch_n, cmd)
+
+    # need to add a dryrun in future XXXX
+    # _run(batch_n, cmd)
 
     #-try:
     #-    task = tc.submit_transfer(td)

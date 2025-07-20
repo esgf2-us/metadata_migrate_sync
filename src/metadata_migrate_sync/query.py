@@ -428,7 +428,7 @@ class GlobusQuery(BaseQuery):
                                 )
 
 
-    def run(self) -> Generator[Any, None, None]:
+    def run(self) -> Generator[Any, None, None] | dict[Any, Any]:
         """Query the globus index in a pagination way."""
         logger = (
             provenance._instance.get_logger(__name__)
@@ -488,6 +488,7 @@ class GlobusQuery(BaseQuery):
                 r = None
                 while retries < max_retries:
                     try:
+
                         sq.set_query("*").set_limit(page_size).set_offset(offset)
 
                         start = time.time()
@@ -503,14 +504,18 @@ class GlobusQuery(BaseQuery):
                         logger.error(f"Error happened in globus query: {e}")
                         raise  # Re-raise other errors
 
-                if not r:
+                if not r or not r["gmeta"]:
                     break
 
                 entries = r.data
-
-                offset += page_size
                 total_returned += len(entries)
                 self._total_returned = total_returned
+
+                if not self.generator:
+                    offset = 0
+                else:
+                    offset += page_size
+
                 if self.skip_prov:
                     logger.info("skip the provenance and database update")
                 else:
