@@ -18,7 +18,7 @@ import time
 from enum import Enum
 
 import typer
-from rich import print
+#-from rich import print
 
 from metadata_migrate_sync.check_ingest_tasks import check_ingest_tasks
 from metadata_migrate_sync.globus import GlobusClient
@@ -208,6 +208,8 @@ def query_globus(
     paginator: str = typer.Option("post", help="globus query type (post and scroll"),
     marker: str = typer.Option("None", help="marker for scroll search"),
     filter_proj: bool = typer.Option(True, help="filter using project name"),
+    complete: bool=typer.Option(False, help="without 10 page limitation"),
+    total: bool=typer.Option(False, help="just print the total info"),
 ) -> None:
     """Search globus index with normal and scroll paginations."""
     if "." not in order_by:
@@ -308,9 +310,13 @@ def query_globus(
         paginator=paginator,
         skip_prov=True,
     )
-
     for page_num, page in enumerate(gq.run()):
-        if page_num >= 10:
+        if total:
+            print(page.get("total"))
+            return
+
+
+        if page_num >= 10 and not complete:
             break
 
         if save is not None:
@@ -340,7 +346,6 @@ def query_globus(
 
                 #-if k >= 10:
                 #-   break
-
 @app.command()
 def check_task(
     task_id: str = typer.Option(None, help="the ingest task id"),
