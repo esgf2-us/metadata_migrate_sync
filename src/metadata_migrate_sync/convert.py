@@ -52,20 +52,33 @@ def _process_urls(
     new_uuid = globus_uuid
 
     new_urls = []
+    new_urls_alt = []
     for url in urls:
         # Replace domain (keep port if exists)
         new_url = _DOMAIN_PATTERN.sub(lambda m: data_node + m.group(2) + '/' if m.group(2) else data_node + '/', url)
         # Replace UUID in globus URLs
         if new_url.startswith('globus:'):
             new_url = _UUID_PATTERN.sub(new_uuid, new_url)
+            core_path = "/"+new_url.split("globus:")[1].split("|Globus|Globus")[0].split('/', 1)[1]
+            urlg = new_url
+
         new_urls.append(new_url)
 
-    return new_urls
+    if all('thredds' not in s for s in new_urls):
+
+        url1 = f"https://esgf-node.ornl.gov/thredds/fileServer{core_path}|application/netcdf|HTTPServer"
+        url2 = f"https://esgf-node.ornl.gov/thredds/dodsC{core_path}.html|application/opendap-html|OPENDAP"
+        url3 = f"gsiftp://esgf-node.ornl.gov{core_path}|application/gridftp|GridFTP"
+        new_urls_alt.extend([url1, url2, url3, urlg])
+
+        return new_urls_alt
+    else:
+        return new_urls
 
 def replicate_gmeta(
     gmeta: dict[str, Any],
     metatype: Literal["Dataset", "File"],
-    source_data_node: Literal["llnl", "anl"],
+    source_data_node: Literal["llnl", "anl", "nersc"],
     target_data_node: Literal["ornl"],
 ) -> dict[Any, Any]:
     """
@@ -83,7 +96,7 @@ def replicate_gmeta(
     # Validate input parameters
     if metatype not in ("Dataset", "File"):
         raise ValueError(f"Invalid metatype: {metatype}")
-    if source_data_node not in ("llnl", "anl"):
+    if source_data_node not in ("llnl", "anl", "nersc"):
         raise ValueError(f"Invalid source_data_node: {source_data_node}")
     if target_data_node != "ornl":
         raise ValueError(f"Unsupported target_data_node: {target_data_node}")
@@ -92,6 +105,7 @@ def replicate_gmeta(
     DN_MAPPINGS = {
         "llnl": ["esgf-data1.llnl.gov", "esgf-data2.llnl.gov", "aims3.llnl.gov"],
         "anl": ["eagle.alcf.anl.gov"],
+        "nersc": ["esgf-data.nersc.gov"],
         "ornl": ["esgf-node.ornl.gov"]
     }
 
@@ -134,6 +148,7 @@ def replicate_gmeta(
             curtime = datetime.datetime.now(datetime.timezone.utc)
             timestamp = curtime.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
             gmeta["entries"][0]["content"]["_timestamp"] = timestamp
+
         except KeyError as e:
             raise ValueError(f"Missing required field in gmeta: {e}")
         return gmeta
@@ -152,6 +167,13 @@ def replicate_gmeta(
             curtime = datetime.datetime.now(datetime.timezone.utc)
             timestamp = curtime.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
             gmeta["entries"][0]["content"]["_timestamp"] = timestamp
+
+            # edge case
+            if "globus_url" in gmeta["entries"][0]["content"]:
+                globus_url = gmeta["entries"][0]["content"]["globus_url"][0]
+                globus_url_head=f"https://app.globus.org/file-manager?origin_id={tgt_globus_id}"
+                new_globus_url=globus_url_head+"&"+globus_url.split("&")[1]
+                gmeta["entries"][0]["content"]["globus_url"] = [new_globus_url]
 
         except KeyError as e:
             raise ValueError(f"Missing required field in gmeta: {e}")
