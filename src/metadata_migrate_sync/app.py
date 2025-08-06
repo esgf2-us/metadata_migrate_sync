@@ -30,6 +30,7 @@ from metadata_migrate_sync.sync import metadata_sync
 from metadata_migrate_sync.transfer import globus_transfer, paginate_json
 from metadata_migrate_sync.util import create_lock, release_lock
 from metadata_migrate_sync.replica import metadata_replica
+from metadata_migrate_sync.delete import metadata_delete_llnl
 
 sys.setrecursionlimit(10000)
 
@@ -361,7 +362,27 @@ def check_task(
 
 
 @app.command()
-def delete_subjects(
+def delete_subjects_query(
+    globus_ep: str = typer.Argument(
+        help="globus end point name", callback=_validate_tgt_ep),
+    project: str = typer.Argument(help="project name", callback=_validate_project),
+    production: bool = typer.Option(help="production run", default=False),
+    dryrun: bool = typer.Option(help="dry run", default=True),
+) -> None:
+    """Delete metadata from the query."""
+   
+    # currently, this function is for deleting llnl metadata only
+
+    metadata_delete_llnl(
+       globus_epname=globus_ep,
+       project=project,
+       production=production,
+       dryrun=dryrun
+    )
+
+
+@app.command()
+def delete_subjects_json(
     globus_ep: str = typer.Argument(
         help="globus end point name", callback=_validate_tgt_ep),
     project: str = typer.Argument(help="project name", callback=_validate_project),
@@ -859,7 +880,7 @@ def replica(
     ),
 
     src_data_node: str = typer.Argument(
-        help="source data node: llnl"
+        help="source data node: llnl/anl"
     ),
     dst_data_node: str = typer.Argument(
         help="target data node: ornl"
@@ -876,8 +897,6 @@ def replica(
         src_data_node,
         dst_data_node,
     )
-
-    pass
 
 if __name__ == "__main__":
     app()

@@ -30,7 +30,7 @@ class provenance(BaseModel, metaclass=SingletonMeta):
     it is a singleton instance
     """
 
-    task_name: Literal["migrate", "ingest", "sync", "replica"]
+    task_name: Literal["migrate", "ingest", "sync", "replica", "delete"]
     source_index_id: str | UUID | AnyUrl
     source_index_type: Literal["solr", "globus"]
     source_index_name: Literal["ornl", "anl", "llnl", "stage", "test", "test_1", "public"]
