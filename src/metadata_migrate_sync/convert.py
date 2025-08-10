@@ -57,7 +57,7 @@ def _process_urls(
         # Replace domain (keep port if exists)
         new_url = _DOMAIN_PATTERN.sub(lambda m: data_node + m.group(2) + '/' if m.group(2) else data_node + '/', url)
         # Replace UUID in globus URLs
-        if new_url.startswith('globus:'):
+        if new_url.startswith('globus:') and globus_uuid != "None":
             new_url = _UUID_PATTERN.sub(new_uuid, new_url)
             core_path = "/"+new_url.split("globus:")[1].split("|Globus|Globus")[0].split('/', 1)[1]
             urlg = new_url
@@ -80,6 +80,8 @@ def replicate_gmeta(
     metatype: Literal["Dataset", "File"],
     source_data_node: Literal["llnl", "anl", "nersc"],
     target_data_node: Literal["ornl"],
+    has_globus: bool=True,
+    is_replica: bool=True,
 ) -> dict[Any, Any]:
     """
     Replicates GMETA metadata for ESGF data replication between nodes.
@@ -96,9 +98,9 @@ def replicate_gmeta(
     # Validate input parameters
     if metatype not in ("Dataset", "File"):
         raise ValueError(f"Invalid metatype: {metatype}")
-    if source_data_node not in ("llnl", "anl", "nersc"):
+    if source_data_node not in ("llnl", "anl", "nersc", "iap"):
         raise ValueError(f"Invalid source_data_node: {source_data_node}")
-    if target_data_node != "ornl":
+    if target_data_node not in ("ornl", "newiap"):
         raise ValueError(f"Unsupported target_data_node: {target_data_node}")
 
     # Define source and target mappings
@@ -106,16 +108,25 @@ def replicate_gmeta(
         "llnl": ["esgf-data1.llnl.gov", "esgf-data2.llnl.gov", "aims3.llnl.gov"],
         "anl": ["eagle.alcf.anl.gov"],
         "nersc": ["esgf-data.nersc.gov"],
-        "ornl": ["esgf-node.ornl.gov"]
+        "ornl": ["esgf-node.ornl.gov"],
+        "iap": ["esg.lasg.ac.cn"],
+        "newiap": ["esg.iap.ac.cn"]
     }
 
     GLOBUS_IDS = {
         "ornl": "dea29ae8-bb92-4c63-bdbc-260522c92fe8"
     }
 
+    if source_data_node == "iap":  # now globus link in url
+        has_globus=False
+        is_replica=False
+
     src_dn_list = DN_MAPPINGS[source_data_node]
     tgt_dn_list = DN_MAPPINGS[target_data_node]
-    tgt_globus_id = GLOBUS_IDS[target_data_node]
+
+    tgt_globus_id = "None"
+    if has_globus:
+        tgt_globus_id = GLOBUS_IDS[target_data_node]
 
     if metatype == "File":
         try:
@@ -131,7 +142,9 @@ def replicate_gmeta(
                 tgt_globus_id,
             )
             gmeta["entries"][0]["content"]["url"] = newurl
-            gmeta["entries"][0]["content"]["replica"] = True
+
+            if is_replica:
+                gmeta["entries"][0]["content"]["replica"] = True
 
             #dataset_id
             if "dataset_id" in gmeta["entries"][0]["content"]:
@@ -161,7 +174,8 @@ def replicate_gmeta(
             gmeta["entries"][0]["content"]["id"] = gmeta["subject"]
             gmeta["entries"][0]["content"]["data_node"] = tgt_dn_list[0]
 
-            gmeta["entries"][0]["content"]["replica"] = True
+            if is_replica:
+                gmeta["entries"][0]["content"]["replica"] = True
 
             # update timestamp
             curtime = datetime.datetime.now(datetime.timezone.utc)

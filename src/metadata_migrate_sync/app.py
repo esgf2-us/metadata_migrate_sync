@@ -311,6 +311,8 @@ def query_globus(
         paginator=paginator,
         skip_prov=True,
     )
+
+    print('xxxdeb', query)
     for page_num, page in enumerate(gq.run()):
         if total:
             print(page.get("total"))
@@ -343,7 +345,8 @@ def query_globus(
                         })
 
 
-                print (json.dumps(print_dict))
+                #print (json.dumps(print_dict))
+                print (print_dict)
 
                 #-if k >= 10:
                 #-   break
@@ -885,17 +888,21 @@ def replica(
     dst_data_node: str = typer.Argument(
         help="target data node: ornl"
     ),
+    has_globus: bool = typer.Option(True, help="has globus link?"),
+    is_replica: bool = typer.Option(True, help="replica?"),
 
 ) -> None:
     """Replicate the metadata in the index by changing documents directly."""
 
     metadata_replica(
-        globus_ep,
-        project,
-        replica_json,
-        meta,
-        src_data_node,
-        dst_data_node,
+        globus_ep = globus_ep,
+        project = project,
+        replica_json = replica_json,
+        meta = meta,
+        src_data_node = src_data_node,
+        dst_data_node = dst_data_node,
+        has_globus = has_globus,
+        is_replica = is_replica,
     )
 
 if __name__ == "__main__":

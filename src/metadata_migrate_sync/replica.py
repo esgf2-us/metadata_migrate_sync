@@ -15,15 +15,17 @@ from datetime import datetime
 import sys
 import pathlib
 
-def metadata_replica(
+def metadata_replica(*,
     globus_ep: str,
     project: ProjectReadOnly | ProjectReadWrite,
     replica_json: str,
     meta: str=Literal["File", "Dataset"],
-    src_data_node: str=Literal["llnl", "nersc", "anl"],
-    dst_data_node: str=Literal["ornl"],
+    src_data_node: str=Literal["llnl", "nersc", "anl", "iap"],
+    dst_data_node: str=Literal["ornl", "newiap"],
     page_start: int = 0,
-    per_page: int = 2000,
+    per_page: int = 2000,   #XXXXXX make sure it is less than 10000 the limit of post query
+    has_globus: bool = True,
+    is_replica: bool = True,
 ) -> None:
     """metadata replication."""
 
@@ -143,12 +145,13 @@ def metadata_replica(
                         metatype = meta,
                         source_data_node = src_data_node,
                         target_data_node = dst_data_node,
+                        has_globus = has_globus,
+                        is_replica = is_replica,
                     ) 
                     gm_list, gm_list_skip = gm.generate(gpage)
 
-
+                    #XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                     ig._submitted = False
-
                     ig.ingest(gm_list) 
                     
 
