@@ -218,8 +218,8 @@ def revise_gmeta(
 
     for item, value in zip(list(revised_items.keys()), revised_value):
         if item in gmeta["entries"][0]["content"]:
-            if revised_items["item"] == gmeta["entries"][0]["content"]["item"]:
-                gmeta["entries"][0]["content"]["item"] = value
+            if revised_items[item] == gmeta["entries"][0]["content"][item]:
+                gmeta["entries"][0]["content"][item] = value
         else:
             print(f"No {item} in the doc of {gmeta['subject']}")
 
@@ -237,3 +237,4 @@ def revise_gmeta(
     curtime = datetime.datetime.now(datetime.timezone.utc)
     timestamp = curtime.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     _prepend_to_list_in_dict(content, "_revised_timestamp", timestamp)
+    return gmeta
