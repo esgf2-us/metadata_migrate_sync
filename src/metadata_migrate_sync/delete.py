@@ -74,6 +74,25 @@ def metadata_delete_llnl(
     logger.info(f"initialized the sqlite database at {prov.db_file}")
 
     # query generator
+    #-search_dict = {
+    #-    "filters":[
+    #-        {
+    #-            "type": "match_all",
+    #-            "field_name": "project",
+    #-            "values": [project.value],
+    #-        },
+    #-        {
+    #-            "type": "match_any",
+    #-            "field_name": "data_node",
+    #-            "values": ["esgf-data1.llnl.gov", "esgf-data2.llnl.gov", "aims3.llnl.gov"],
+    #-        },
+    #-    ],
+    #-    "sort_field": "id",
+    #-    "sort": "asc",
+    #-    "limit": 10,
+    #-    "offset": 0,
+    #-}
+
     search_dict = {
         "filters":[
             {
@@ -84,7 +103,7 @@ def metadata_delete_llnl(
             {
                 "type": "match_any",
                 "field_name": "data_node",
-                "values": ["esgf-data1.llnl.gov", "esgf-data2.llnl.gov", "aims3.llnl.gov"],
+                "values": ["esg.lasg.ac.cn"],
             },
         ],
         "sort_field": "id",
@@ -150,6 +169,8 @@ def metadata_delete_llnl(
 
              if dryrun:
                  ig._submitted = True
+                 print (page)
+                 print (del_subjects_list)
              else:
                  response = sc.batch_delete_by_subject(
                      _globus_index_id,
