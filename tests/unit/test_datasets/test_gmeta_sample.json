@@ -1,0 +1,158 @@
+{
+    "total": 1,
+    "gmeta": [
+        {
+            "@datatype": "GMetaResult",
+            "@version": "2019-08-27",
+            "subject": "input4MIPs.CMIP6Plus.OMIP.MRI.MRI-JRA55-do-1-6-0.atmos.3hrPt.ts.gr.v20240531|esgf-node.ornl.gov",
+            "entries": [
+                {
+                    "content": {
+                        "project": [
+                            "input4MIPs"
+                        ],
+                        "activity_id": [
+                            "input4MIPs"
+                        ],
+                        "mip_era": [
+                            "CMIP6Plus"
+                        ],
+                        "target_mip": [
+                            "OMIP"
+                        ],
+                        "institution_id": [
+                            "MRI"
+                        ],
+                        "source_id": [
+                            "MRI-JRA55-do-1-6-0"
+                        ],
+                        "realm": [
+                            "atmos"
+                        ],
+                        "frequency": [
+                            "3hrPt"
+                        ],
+                        "variable_id": [
+                            "ts"
+                        ],
+                        "grid_label": [
+                            "gr"
+                        ],
+                        "contact": [
+                            "Hiroyuki Tsujino (htsujino@mri-jma.go.jp)"
+                        ],
+                        "dataset_category": [
+                            "atmosphericState"
+                        ],
+                        "source_version": [
+                            "1.6.0"
+                        ],
+                        "source": [
+                            "MRI JRA55-do 1.6.0: Atmospheric state generated for OMIP based on the JRA-55 reanalysis"
+                        ],
+                        "further_info_url": [
+                            "https://climate.mri-jma.go.jp/pub/ocean/JRA55-do/index.html"
+                        ],
+                        "title": "input4MIPs.CMIP6Plus.OMIP.MRI.MRI-JRA55-do-1-6-0.atmos.3hrPt.ts.gr",
+                        "product": [
+                            "reanalysis"
+                        ],
+                        "table": [
+                            "reanalysis"
+                        ],
+                        "nominal_resolution": [
+                            "50 km"
+                        ],
+                        "institution": [
+                            "Meteorological Research Institute, Tsukuba, Ibaraki 305-0052, Japan"
+                        ],
+                        "target_mip_list": [
+                            "OMIP"
+                        ],
+                        "deprecated": [
+                            "False"
+                        ],
+                        "dataset_status": [
+                            "latest"
+                        ],
+                        "realm_drs": [
+                            "atmos"
+                        ],
+                        "Conventions": [
+                            "CF-1.7 CMIP-6.2"
+                        ],
+                        "creation_date": "2024-05-31T06:47:27Z",
+                        "data_node": "esgf-node.ornl.gov",
+                        "index_node": "us-index",
+                        "master_id": "input4MIPs.CMIP6Plus.OMIP.MRI.MRI-JRA55-do-1-6-0.atmos.3hrPt.ts.gr",
+                        "instance_id": "input4MIPs.CMIP6Plus.OMIP.MRI.MRI-JRA55-do-1-6-0.atmos.3hrPt.ts.gr.v20240531",
+                        "id": "input4MIPs.CMIP6Plus.OMIP.MRI.MRI-JRA55-do-1-6-0.atmos.3hrPt.ts.gr.v20240531|esgf-node.ornl.gov",
+                        "short_description": [
+                            "MRI JRA55-do 1.6.0 dataset prepared for input4MIPs"
+                        ],
+                        "replica": true,
+                        "latest": true,
+                        "type": "Dataset",
+                        "version": "20240531",
+                        "dataset_id_template_": [
+                            "%(activity_id)s.%(mip_era)s.%(target_mip)s.%(institution_id)s.%(source_id)s.%(realm)s.%(frequency)s.%(variable_id)s.%(grid_label)s"
+                        ],
+                        "directory_format_template_": [
+                            "%(root)s/%(activity_id)s/%(mip_era)s/%(target_mip)s/%(institution_id)s/%(source_id)s/%(realm)s/%(frequency)s/%(variable_id)s/%(grid_label)s/%(version)s"
+                        ],
+                        "variable_long_name": [
+                            "Surface Temperature"
+                        ],
+                        "cf_standard_name": [
+                            "surface_temperature"
+                        ],
+                        "variable_units": [
+                            "K"
+                        ],
+                        "variable": [
+                            "ts"
+                        ],
+                        "datetime_start": "1958-01-01T00:00:00Z",
+                        "datetime_end": "2024-02-01T21:00:00Z",
+                        "number_of_files": 67,
+                        "size": 65305160317,
+                        "access": [
+                            "HTTPServer",
+                            "OPENDAP",
+                            "Globus"
+                        ],
+                        "globus_url": [
+                            "https://app.globus.org/file_manager?origin_id=415a6320-e49c-11e5-9798-22000b9da45e&origin_path=/user_pub_work/input4MIPs/CMIP6Plus/OMIP/MRI/MRI-JRA55-do-1-6-0/atmos/3hrPt/ts/gr/v20240531"
+                        ],
+                        "pid": [
+                            "hdl:21.14100/937c24fc-add2-3e28-a865-fd9b8068d9be"
+                        ],
+                        "xlink": [
+                            "http://hdl.handle.net/hdl:21.14100/937c24fc-add2-3e28-a865-fd9b8068d9be|PID|pid"
+                        ],
+                        "_version_": 1802868073819013120,
+                        "retracted": false,
+                        "_timestamp": "2025-07-15T17:44:05.880Z",
+                        "score": 8.539043,
+                        "_revised_by": [
+                            "Min Xu"
+                        ],
+                        "_revised_item": [
+                            "project"
+                        ],
+                        "_revised_timestamp": [
+                            "2025-06-26T19:44:33.049Z"
+                        ]
+                    },
+                    "entry_id": "dataset",
+                    "matched_principal_sets": []
+                }
+            ]
+        }
+    ],
+    "@datatype": "GSearchResult",
+    "@version": "2017-09-01",
+    "offset": 0,
+    "count": 1,
+    "has_next_page": false
+}
