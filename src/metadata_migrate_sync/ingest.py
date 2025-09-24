@@ -13,9 +13,10 @@ from sqlalchemy.orm import object_session
 
 from metadata_migrate_sync.database import Datasets, Files, Ingest, MigrationDB, Query
 from metadata_migrate_sync.globus import GlobusClient, GlobusIngestModel
+from metadata_migrate_sync.gmeta import StandardGmetaGenerator
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
-from metadata_migrate_sync.gmeta import StandardGmetaGenerator, ModifiedGmetaGenerator
+
 
 class BaseIngest(BaseModel):
     """ingestion base model."""
@@ -117,6 +118,7 @@ class GlobusIngest(BaseIngest):
         DBsession = MigrationDB.get_session()
         with DBsession() as session:
 
+            # check if current_query associated with the session
             if object_session(current_query) is None:
                 last_query = session.query(Query).order_by(Query.id.desc()).first()
             else:
@@ -130,7 +132,7 @@ class GlobusIngest(BaseIngest):
                     urls = ",".join(doc.get("url")) if "url" in doc else "NoURL"
                     files_obj = Files(
                         query=last_query,
-                        source_index=last_query.index_id,
+                        source_index=last_query.index_id if last_query else 0,
                         target_index=str(self.end_point),
                         files_id=doc.get("id"),
                         size=(doc.get("size") if "size" in doc else -1),
@@ -142,9 +144,10 @@ class GlobusIngest(BaseIngest):
                     session.add(files_obj)
 
                 elif metatype == "datasets" or metatype == "Dataset":
+
                     datasets_obj = Datasets(
                         query=last_query,
-                        source_index=last_query.index_id,
+                        source_index=last_query.index_id if last_query else 0,
                         target_index=str(self.end_point),
                         datasets_id=doc.get("id"),
                         success=-9 if "skip_ingest" in doc else 0,

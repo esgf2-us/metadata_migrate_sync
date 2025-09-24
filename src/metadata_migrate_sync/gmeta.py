@@ -1,16 +1,21 @@
 """process the globus gmeta data class"""
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
+
+from metadata_migrate_sync.lite_model import enforced_field
+from pydantic import ValidationError
+
 
 class GmetaGenerator(ABC):
     """Abstract base class for GMeta list generation."""
-    
+
     def generate(self, gdoc: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         """Template method that handles common generation logic."""
         gmeta_entries = []
         gmeta_entries_skipped: list[dict[str, Any]] = []
-        
+
         for g in self.process_entry(gdoc["gmeta"]):
             gmeta_dict = {
                 "id": g["entries"][0]["entry_id"],
@@ -18,30 +23,36 @@ class GmetaGenerator(ABC):
                 "visible_to": ["public"],
                 "content": g["entries"][0]["content"],
             }
-            
-            if self.should_skip(g):
+
+            if self.should_skip(g["entries"][0]["content"]):
+                gmeta_dict["content"]["skip_ingest"] = True
                 gmeta_entries_skipped.append(gmeta_dict)
             else:
                 gmeta_entries.append(gmeta_dict)
-        
+
         return (
             {"ingest_type": "GMetaList", "ingest_data": {"gmeta": gmeta_entries}},
             {"ingest_type": "GMetaList", "ingest_data": {"gmeta": gmeta_entries_skipped}}
         )
-    
+
     @abstractmethod
     def process_entry(self, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Process each entry before generation (can modify or filter)."""
         pass
-    
+
     def should_skip(self, entry: dict[str, Any]) -> bool:
         """Determine if an entry should be skipped (can be overridden)."""
-        return False
+
+        try:
+            enforced_field.model_validate(entry, strict=True)
+            return False
+        except ValidationError as e:
+            return True
 
 
 class StandardGmetaGenerator(GmetaGenerator):
     """Concrete implementation for standard GMeta generation."""
-    
+
     def process_entry(self, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """No modification of entries."""
         return entries
@@ -49,14 +60,14 @@ class StandardGmetaGenerator(GmetaGenerator):
 
 class ModifiedGmetaGenerator(GmetaGenerator):
     """Concrete implementation for modified GMeta generation."""
-    
-    def __init__(self, 
+
+    def __init__(self,
         modifier: Callable[[dict[str, Any]], dict[str, Any]],
-        **modifier_kwargs 
+        **modifier_kwargs
     ):
         self.modifier = modifier
         self.modifier_kwargs = modifier_kwargs
-    
+
     def process_entry(self, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Apply modifier function to each entry."""
         return [self.modifier(entry, **self.modifier_kwargs) for entry in entries]

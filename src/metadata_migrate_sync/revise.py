@@ -1,29 +1,31 @@
 """Data revision"""
-from metadata_migrate_sync.database import MigrationDB, Query
+import pathlib
+import sys
+from datetime import datetime
+from typing import Literal, Any
+
+from pydantic import validate_call
+from tqdm import tqdm
+
+from metadata_migrate_sync.convert import revise_gmeta
+from metadata_migrate_sync.database import MigrationDB
 from metadata_migrate_sync.globus import GlobusClient
+from metadata_migrate_sync.gmeta import ModifiedGmetaGenerator
 from metadata_migrate_sync.ingest import GlobusIngest
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.query import GlobusQuery
 from metadata_migrate_sync.transfer import paginate_json
-from metadata_migrate_sync.convert import revise_gmeta
-from metadata_migrate_sync.gmeta import ModifiedGmetaGenerator
-
-from pydantic import validate_call
-from tqdm import tqdm
-from typing import Literal
-from datetime import datetime
-import sys
-import pathlib
 
 
 @validate_call
 def metadata_revise(
     *,
-    globus_ep: Literal["backup"],
+    globus_ep: Literal["public"],
     project: ProjectReadOnly | ProjectReadWrite,
     meta: str=Literal["File", "Dataset"],
     revise_json: str,
+    revise_item: dict[str, Any],
     page_start: int = 0,
     per_page: int = 2000, # XXXXX
 ) -> None:
@@ -108,8 +110,6 @@ def metadata_revise(
         project=project,
     )
 
-    print ('xxxxxin revise', _globus_index_id)
-
     logger.info("instantiate query and ingest classes")
 
     page = page_start
@@ -138,7 +138,6 @@ def metadata_revise(
                 ids = result["items"]
                 query_dict["filters"][0]["values"] = ids
 
-
                 for gpage_num, gpage in enumerate(gq.run()):
                     gq._n_batch = -1
 
@@ -149,13 +148,17 @@ def metadata_revise(
                         #-revised_value = [True, False],
                         #revised_items = {"latest": True},
                         #revised_value = [0.0001],
-                        revised_items = {"size": 35749987588},
-                        revised_value = [0.0001],
+                        #-revised_items = {"url": 'cmip5_css02/data'},
+                        #-revised_value = ['cmip5_css02_data'],
+                        #-revised_option = "include",
+                        revised_items = revise_item["revised_items"],
+                        revised_value = revise_item["revised_value"],
+                        revised_option = revise_item["revised_option"],
                     )
 
                     gm_list, gm_list_skip = gm.generate(gpage)
 
-                    print (gm_list)
+                    #print (gm_list, 'xxxxx')
 
                     #XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                     ig._submitted = False

@@ -18,19 +18,22 @@ import time
 from enum import Enum
 
 import typer
-#-from rich import print
 
+#-from rich import print
 from metadata_migrate_sync.check_ingest_tasks import check_ingest_tasks
+from metadata_migrate_sync.delete import metadata_delete_llnl
 from metadata_migrate_sync.globus import GlobusClient
 from metadata_migrate_sync.migrate import metadata_migrate
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.query import GlobusQuery, SolrQuery
+from metadata_migrate_sync.replica import metadata_replica
+from metadata_migrate_sync.revise import metadata_revise
 from metadata_migrate_sync.solr import SolrIndexes
 from metadata_migrate_sync.sync import metadata_sync
 from metadata_migrate_sync.transfer import globus_transfer, paginate_json
 from metadata_migrate_sync.util import create_lock, release_lock
-from metadata_migrate_sync.replica import metadata_replica
-from metadata_migrate_sync.delete import metadata_delete_llnl
+
+from metadata_migrate_sync.lite_model import enforced_field
 
 sys.setrecursionlimit(10000)
 
@@ -211,6 +214,8 @@ def query_globus(
     filter_proj: bool = typer.Option(True, help="filter using project name"),
     complete: bool=typer.Option(False, help="without 10 page limitation"),
     total: bool=typer.Option(False, help="just print the total info"),
+    raw: bool=typer.Option(False, help="just print the total info"),
+    verbose: bool=typer.Option(False, help="verbose"),
 ) -> None:
     """Search globus index with normal and scroll paginations."""
     if "." not in order_by:
@@ -272,8 +277,8 @@ def query_globus(
             if key[2:] == "project":
                  query["filters"].remove(proj_cond)
             if "::" in value:
-                value_1 = value.split("::")[0]
-                value_2 = value.split("::")[1]
+                value_1, value_2 = value.split("::", 1)
+
 
                 match value_2:
                     case "like":
@@ -288,13 +293,41 @@ def query_globus(
                             },
                         }
                     case _:
-                        filter_cond = {"type": value_2, "field_name": key[2:], "values": [value_1]}
+                        # handling the array seperated by ','
+                        # filter_cond = {"type": value_2, "field_name": key[2:], "values": [value_1]}
+                        filter_cond = {"type": value_2, "field_name": key[2:], "values": value_1.split(',')}
+            elif "??" in value:
+                value_1, value_2 = value.split("??", 1)
+
+                value_x = value_1
+
+                match value_2:
+                    case "float":
+                        value_x = float(value_1)
+                    case "int":
+                        value_x = int(value_1)
+                    case "bool":
+                        value_x = bool(value_1)
+                    case _:
+                        value_x = str(value_1)
+
+                filter_cond = {"type": "match_all", "field_name": key[2:], "values": [value_x]}
+
             else:
+                if value.lower() == "true":
+                    value=True
+                elif value.lower() == "false":
+                    value=False
+
                 filter_cond = {"type": "match_all", "field_name": key[2:], "values": [value]}
             query["filters"].append(filter_cond)
 
     client_name, index_name = GlobusClient.get_client_index_names(globus_ep, project.value)
     _globus_index_id = GlobusClient.globus_clients[client_name].indexes[index_name]
+
+    if verbose:
+        print('globus index:', _globus_index_id)
+        print('query:', query)
 
     if marker != "None" and paginator == "scroll":
         query["marker"] = marker
@@ -312,11 +345,11 @@ def query_globus(
         skip_prov=True,
     )
 
-    print('xxxdeb', query)
     for page_num, page in enumerate(gq.run()):
         if total:
             print(page.get("total"))
             return
+
 
 
         if page_num >= 10 and not complete:
@@ -333,20 +366,32 @@ def query_globus(
                     "total": page.get("total"),
                     "subject": g["subject"],
                 }
+                # validate
+                enforced_field.model_validate(g["entries"][0]["content"], strict=True)
 
                 for var in printvar.split(','):
                     if var in g["entries"][0]["content"]:
+
+                        prt_var = g["entries"][0]["content"][var]
+                        prt_var = (
+                            g["entries"][0]["content"][var][0] if isinstance(g["entries"][0]["content"][var], list) else
+                            g["entries"][0]["content"][var]
+                        )
                         print_dict.update({
                             var: g["entries"][0]["content"][var],
+                            #-f"{var} type": type(prt_var).__name__,
                         })
                     elif var in page and var != "gmeta":
                         print_dict.update({
                             var: page[var],
+                            #-f"{var} type": type(page[var]).__name__,
                         })
 
 
-                #print (json.dumps(print_dict))
-                print (print_dict)
+                if raw:
+                    print (print_dict)
+                else:
+                    print (json.dumps(print_dict))
 
                 #-if k >= 10:
                 #-   break
@@ -373,7 +418,7 @@ def delete_subjects_query(
     dryrun: bool = typer.Option(help="dry run", default=True),
 ) -> None:
     """Delete metadata from the query."""
-   
+
     # currently, this function is for deleting llnl metadata only
 
     metadata_delete_llnl(
@@ -485,7 +530,7 @@ def compare_globus(
     """Compare documents in a globus index."""
 
     from itertools import zip_longest
-    
+
     client_name, index_name = GlobusClient.get_client_index_names(globus_ep, project.value)
     _globus_index_id = GlobusClient.globus_clients[client_name].indexes[index_name]
 
@@ -656,13 +701,13 @@ def compare_globus(
         #break
 
 
-        if missing_files_gleft: 
-            to_remove = {item for item in missing_files_gleft 
+        if missing_files_gleft:
+            to_remove = {item for item in missing_files_gleft
                         if item.split("|")[0] not in g_left}
             missing_files_gleft -= to_remove  # Remove all at once
-        
+
         if missing_files_sleft:
-            to_remove = {item for item in missing_files_sleft 
+            to_remove = {item for item in missing_files_sleft
                         if item.split("|")[0] not in s_left}
             missing_files_sleft -= to_remove
 
@@ -867,9 +912,44 @@ def transfer(
             break
 
 @app.command()
-def replica(
+def revise(
     globus_ep: str = typer.Argument(
         help="globus index", callback=_validate_tgt_ep
+    ),
+    project: str = typer.Argument(
+        help="project name", callback=_validate_project
+    ),
+    revise_json: str =  typer.Argument(
+        help="json file containing the document needed to revise"
+    ),
+    revise_conf: str =  typer.Argument(
+        help="json file containing the revise settings"
+    ),
+    meta: str = typer.Argument(
+        help="meta type: File or Dataset"
+    ),
+) -> None:
+    """Revise gmeta."""
+
+    with open(revise_conf) as f:
+        # Load the JSON data from the file
+        revise_item = json.load(f)
+
+    metadata_revise(
+        globus_ep = globus_ep,
+        project = project,
+        meta = meta,
+        revise_json = revise_json,
+        revise_item = revise_item,
+    )
+
+@app.command()
+def replica(
+    source_ep: str = typer.Argument(
+        help="source globus index", callback=_validate_tgt_ep
+    ),
+    target_ep: str = typer.Argument(
+        help="target globus index", callback=_validate_tgt_ep
     ),
     project: str = typer.Argument(
         help="project name", callback=_validate_project
@@ -890,12 +970,14 @@ def replica(
     ),
     has_globus: bool = typer.Option(True, help="has globus link?"),
     is_replica: bool = typer.Option(True, help="replica?"),
+    dry_run: bool = typer.Option(False, help="dry run"),
 
 ) -> None:
     """Replicate the metadata in the index by changing documents directly."""
 
     metadata_replica(
-        globus_ep = globus_ep,
+        source_ep = source_ep,
+        target_ep = target_ep,
         project = project,
         replica_json = replica_json,
         meta = meta,
@@ -903,6 +985,7 @@ def replica(
         dst_data_node = dst_data_node,
         has_globus = has_globus,
         is_replica = is_replica,
+        dry_run = dry_run,
     )
 
 if __name__ == "__main__":
