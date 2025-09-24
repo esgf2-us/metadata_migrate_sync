@@ -47,7 +47,7 @@ def paginate_json(file_path: str, page: int, per_page: int, json_type:str):
                     items.append(item["source_path"])
                 if i >= end:
                     break
-    elif json_type == "RootList": 
+    elif json_type == "RootList":
         with open(file_path, 'rb') as f:
             for i, item in enumerate(ijson.items(f, 'item')):
                 if start <= i < end:

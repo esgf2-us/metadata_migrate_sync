@@ -69,7 +69,3 @@ class CMIP6CV(BaseModel):
     variant_label: list[str] | None = None
     branch_method: list[str] | None = None
     tracking_id: list[str] | None = None
-
-
-
-

@@ -1,20 +1,20 @@
 
 
+import math
+import pathlib
+import sys
 from datetime import datetime
-from typing import Literal, Any
+from typing import Any, Literal
+
 from pydantic import validate_call
 from tqdm import tqdm
-import sys
-import pathlib
-import math
 
-from metadata_migrate_sync.database import MigrationDB, Query
-from metadata_migrate_sync.globus import GlobusClient, GlobusCV
-from metadata_migrate_sync.ingest import GlobusIngest, generate_gmeta_list_globus
+from metadata_migrate_sync.database import MigrationDB
+from metadata_migrate_sync.globus import GlobusClient
+from metadata_migrate_sync.ingest import GlobusIngest
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 from metadata_migrate_sync.query import GlobusQuery
-
 
 
 def _get_subjects(page: dict[str, Any]) -> list[str]:
@@ -23,7 +23,7 @@ def _get_subjects(page: dict[str, Any]) -> list[str]:
     for gmeta in page["gmeta"]:
         subjects_list.append(gmeta["subject"])
     return subjects_list
-    
+
 
 @validate_call
 def metadata_delete_llnl(
@@ -188,7 +188,7 @@ def metadata_delete_llnl(
                 current_query=gq._current_query,
                 metatype="files",
              )
-             
+
              if not production and (maxpage is not None) and page_num >= maxpage:
                  break
 
