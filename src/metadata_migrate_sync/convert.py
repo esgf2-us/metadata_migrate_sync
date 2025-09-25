@@ -6,6 +6,7 @@ from typing import Any, Literal
 from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, FileDocs
 from metadata_migrate_sync.provenance import provenance
 
+
 # Precompile regex patterns once (module-level constants)
 _DOMAIN_PATTERN = re.compile(r'(?<=://)([^/:]+)(:\d+)?(/|$)')
 _UUID_PATTERN = re.compile(r'(?<=globus:)[^/]+(?=/)')  # Matches UUID only
@@ -266,4 +267,102 @@ def revise_gmeta(
     timestamp = curtime.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     _prepend_to_list_in_dict(content, "_revised_timestamp", timestamp)
 
+    return gmeta
+
+
+def _extract_version_from_id(text: str):
+    # Look for patterns like vYYYYMMDD or YYYYMMDD
+    pattern = r'v(\d{8})'
+    match = re.search(pattern, text)
+    if match:
+        return match.group(1)
+    return None
+
+def _extract_scalar_value(value: Any) -> Any:
+    """Extract scalar value from list if possible."""
+    if isinstance(value, list):
+        if len(value) == 1:
+            return value[0]
+        else:
+            return None  # Multiple values, can't convert to scalar
+    return value
+
+def _convert_to_bool(value: Any) -> bool | None:
+    """Convert various representations to boolean, returns None if conversion fails."""
+    if isinstance(value, bool):
+        return value
+    
+    if isinstance(value, list):
+        if len(value) == 1:
+            return _convert_to_bool(value[0])
+        # For lists with multiple elements, conversion doesn't make sense
+        return None
+    
+    if isinstance(value, str):
+        value_lower = value.lower()
+        if value_lower in ('true', '1', 'yes', 'y'):
+            return True
+        elif value_lower in ('false', '0', 'no', 'n'):
+            return False
+    
+    # Try numeric conversion
+    if isinstance(value, (int, float)):
+        return bool(value)
+    
+    return None
+
+def fix_dtype_gmeta(
+    gmeta: dict[str, Any],
+) -> dict[str, Any]:
+    """data type fixes"""
+    # 
+    for item in ['latest', 'replica', 'retracted', 'deprecated']:
+        if item not in gmeta["entries"][0]["content"]:
+            continue
+       
+        value = gmeta["entries"][0]["content"][item]
+        value_scalar = _extract_scalar_value(value)
+        fixed_value = _convert_to_bool(value_scalar)
+   
+        if fixed_value is not None:
+            gmeta["entries"][0]["content"][item] = fixed_value
+
+    if 'version' in gmeta["entries"][0]["content"]:
+        var_int = gmeta["entries"][0]["content"]["version"]
+        fix_int = None
+
+        metadata_id = gmeta["entries"][0]["content"]["id"]
+        project_id = gmeta["entries"][0]["content"]["project"]
+        # list -> scalar
+        var_int_scalar = _extract_scalar_value(var_int)
+
+        if var_int_scalar is not None:
+            # check length 
+            if len(str(var_int_scalar)) != 8:
+                if _extract_version_from_id(metadata_id):
+                    var_int_scalar = _extract_version_from_id(metadata_id)
+            try:
+                datetime.datetime.strptime(str(var_int_scalar), "%Y%m%d")
+                fix_int = int(var_int_scalar)
+            except ValueError:
+                if str(var_int_scalar).isdigit() and (
+                    "CMIP3" in project_id or "CMIP5" in project_id):
+                    fix_int = int(var_int_scalar)
+                else:
+                    fix_int = None
+        else:
+            fix_int = None
+
+        if fix_int is not None:
+            gmeta["entries"][0]["content"]["version"] = fix_int
+
+        # for CMIP3, version predated it. so all set to 1
+        if "CMIP3" in project_id:
+            gmeta["entries"][0]["content"]["version"] = 1
+
+    if 'dataset_id' in gmeta["entries"][0]["content"]:
+        dataset_id = gmeta["entries"][0]["content"]["dataset_id"]
+        dataset_id_fix = _extract_scalar_value(dataset_id)
+        if dataset_id_fix is not None:
+            gmeta["entries"][0]["content"]["dataset_id"] = dataset_id_fix
     return gmeta

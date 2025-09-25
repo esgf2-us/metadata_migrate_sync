@@ -23,3 +23,12 @@ class enforced_field(BaseModel):
         except ValueError:
             raise ValueError("version must represent a valid date in YYYYMMDD format")
         return v
+
+class enforced_field_relax(BaseModel):
+    """relax version to be integer only."""
+    latest: bool
+    replica: bool
+    retracted: bool
+    deprecated: bool | None = None
+    version: int
+    dataset_id: str | None = None

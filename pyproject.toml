@@ -25,6 +25,7 @@ dependencies = [
     "typer>=0.15.2",
     "tqdm>=4.67.1",
     "ntplib>=0.4.0",
+    "ijson",
 ]
 
 
@@ -38,6 +39,7 @@ dev-dependencies = [
     "ruff>=0.11.2",
     "types-requests",
     "types-tqdm",
+    "pytest-mock",
 ]
 
 [tool.ruff]

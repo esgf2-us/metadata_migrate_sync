@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
 
-from metadata_migrate_sync.lite_model import enforced_field
+from metadata_migrate_sync.lite_model import enforced_field, enforced_field_relax
 from pydantic import ValidationError
 
 
@@ -44,7 +44,11 @@ class GmetaGenerator(ABC):
         """Determine if an entry should be skipped (can be overridden)."""
 
         try:
-            enforced_field.model_validate(entry, strict=True)
+
+            if "CMIP3" in entry["project"] or "CMIP5" in entry["project"]:
+                enforced_field_relax.model_validate(entry, strict=True)
+            else:
+                enforced_field.model_validate(entry, strict=True)
             return False
         except ValidationError as e:
             return True

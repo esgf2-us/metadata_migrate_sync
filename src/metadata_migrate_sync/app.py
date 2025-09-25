@@ -35,6 +35,8 @@ from metadata_migrate_sync.util import create_lock, release_lock
 
 from metadata_migrate_sync.lite_model import enforced_field
 
+from metadata_migrate_sync.fixes import metadata_fixes
+
 sys.setrecursionlimit(10000)
 
 def _combine_enums(*enums: Enum, name:str="CombinedEnum") -> Enum:
@@ -216,6 +218,7 @@ def query_globus(
     total: bool=typer.Option(False, help="just print the total info"),
     raw: bool=typer.Option(False, help="just print the total info"),
     verbose: bool=typer.Option(False, help="verbose"),
+    validate: bool=typer.Option(False, help="type validation")
 ) -> None:
     """Search globus index with normal and scroll paginations."""
     if "." not in order_by:
@@ -367,7 +370,9 @@ def query_globus(
                     "subject": g["subject"],
                 }
                 # validate
-                enforced_field.model_validate(g["entries"][0]["content"], strict=True)
+
+                if validate:
+                    enforced_field.model_validate(g["entries"][0]["content"], strict=True)
 
                 for var in printvar.split(','):
                     if var in g["entries"][0]["content"]:
@@ -987,6 +992,25 @@ def replica(
         is_replica = is_replica,
         dry_run = dry_run,
     )
+
+
+@app.command()
+def fixes(
+    globus_ep: str = typer.Argument(
+        help="target end point name", callback=_validate_tgt_ep
+    ),
+    project: str = typer.Argument(help="project name", callback=_validate_project),
+    prod: bool = typer.Option(help="production run", default=False),
+    dry_run: bool = True
+) -> None:
+
+    metadata_fixes(
+        globus_epname = globus_ep,
+        project = project,
+        production = prod,
+        dry_run = dry_run,
+    )
+
 
 if __name__ == "__main__":
     app()

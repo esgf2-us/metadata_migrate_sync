@@ -415,7 +415,7 @@ class GlobusQuery(BaseQuery):
 
                                 session.commit()
                             else:
-                                self.query["offset"] = int(last_query.cursorMark_next)
+                                #-bug: self.query["offset"] = int(last_query.cursorMark_next)
                                 self._restart = False
 
                                 if self.paginator == "scroll":
