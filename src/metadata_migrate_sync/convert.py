@@ -346,7 +346,9 @@ def fix_dtype_gmeta(
                 fix_int = int(var_int_scalar)
             except ValueError:
                 if str(var_int_scalar).isdigit() and (
-                    "CMIP3" in project_id or "CMIP5" in project_id):
+                    "CMIP3" in project_id or "CMIP5" in project_id or
+                    "e3sm-supplement" in project_id
+                ):
                     fix_int = int(var_int_scalar)
                 else:
                     fix_int = None
