@@ -45,7 +45,10 @@ class GmetaGenerator(ABC):
 
         try:
 
-            if "CMIP3" in entry["project"] or "CMIP5" in entry["project"]:
+            if (
+                "CMIP3" in entry["project"] or "CMIP5" in entry["project"] or
+                "e3sm-supplement" in entry["project"]
+            ):
                 enforced_field_relax.model_validate(entry, strict=True)
             else:
                 enforced_field.model_validate(entry, strict=True)
