@@ -7,9 +7,9 @@ from typing import Literal, Any
 from pydantic import validate_call
 from tqdm import tqdm
 
-from metadata_migrate_sync.convert import revise_gmeta
+from metadata_migrate_sync.convert import revise_gmeta, fix_dtype_gmeta
 from metadata_migrate_sync.database import MigrationDB
-from metadata_migrate_sync.globus import GlobusClient
+from metadata_migrate_sync.globus import GlobusClient, GlobusCV
 from metadata_migrate_sync.gmeta import ModifiedGmetaGenerator
 from metadata_migrate_sync.ingest import GlobusIngest
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
@@ -26,6 +26,7 @@ def metadata_revise(
     meta: str=Literal["File", "Dataset"],
     revise_json: str,
     revise_item: dict[str, Any],
+    is_fix: bool=False,
     page_start: int = 0,
     per_page: int = 2000, # XXXXX
 ) -> None:
@@ -70,26 +71,46 @@ def metadata_revise(
     logger.info(f"initialized the sqlite database at {prov.db_file}")
 
 
-    query_dict = {
-        "@version": "query#1.0.0",
-        "q": "",
-        "filters": [
-            {
-                "type": "match_any",
-                "field_name": "id",
-                "values": [],
-            },
-            {
-                "type": "match_all",
-                "field_name": "type",
-                "values": [meta],
-            },
-        ],
-        "limit": per_page,
-        "offset": 0,
-        "sort_field": "_timestamp",
-        "sort": "asc",
-    }
+    if is_fix:
+
+        query_dict = {
+            "@version": "query#1.0.0",
+            "q": "",
+            "filters": [
+                {
+                    "type": "match_any",
+                    "field_name": "id",
+                    "values": [],
+                },
+            ],
+            "limit": per_page,
+            "offset": 0,
+            "sort_field": "_timestamp",
+            "sort": "asc",
+        }
+
+
+    else:
+        query_dict = {
+            "@version": "query#1.0.0",
+            "q": "",
+            "filters": [
+                {
+                    "type": "match_any",
+                    "field_name": "id",
+                    "values": [],
+                },
+                {
+                    "type": "match_all",
+                    "field_name": "type",
+                    "values": [meta],
+                },
+            ],
+            "limit": per_page,
+            "offset": 0,
+            "sort_field": "_timestamp",
+            "sort": "asc",
+        }
 
     # query
     gq = GlobusQuery(
@@ -111,6 +132,8 @@ def metadata_revise(
     )
 
     logger.info("instantiate query and ingest classes")
+
+    total_skipped = 0 
 
     page = page_start
 
@@ -141,22 +164,45 @@ def metadata_revise(
                 for gpage_num, gpage in enumerate(gq.run()):
                     gq._n_batch = -1
 
-                    gm =  ModifiedGmetaGenerator(
-                        modifier = revise_gmeta,
-                        revised_by = "Min Xu",
-                        #-revised_items = {"retracted":False, "latest":True},
-                        #-revised_value = [True, False],
-                        #revised_items = {"latest": True},
-                        #revised_value = [0.0001],
-                        #-revised_items = {"url": 'cmip5_css02/data'},
-                        #-revised_value = ['cmip5_css02_data'],
-                        #-revised_option = "include",
-                        revised_items = revise_item["revised_items"],
-                        revised_value = revise_item["revised_value"],
-                        revised_option = revise_item["revised_option"],
-                    )
+                    if is_fix:
+
+                        gm =  ModifiedGmetaGenerator(
+                            fix_dtype_gmeta
+                        )
+
+                    else:
+                        gm =  ModifiedGmetaGenerator(
+                            modifier = revise_gmeta,
+                            revised_by = "Min Xu",
+                            #-revised_items = {"retracted":False, "latest":True},
+                            #-revised_value = [True, False],
+                            #revised_items = {"latest": True},
+                            #revised_value = [0.0001],
+                            #-revised_items = {"url": 'cmip5_css02/data'},
+                            #-revised_value = ['cmip5_css02_data'],
+                            #-revised_option = "include",
+                            revised_items = revise_item["revised_items"],
+                            revised_value = revise_item["revised_value"],
+                            revised_option = revise_item["revised_option"],
+                        )
 
                     gm_list, gm_list_skip = gm.generate(gpage)
+
+                    if len(
+                              gm_list[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+                    ) == 0:
+                        continue
+
+
+                    if len(
+                       gm_list_skip[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+                    ) > 0:
+
+                        total_skipped += len(
+                            gm_list_skip[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+                        )
+                        for g in gm_list_skip[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]:
+                            logger.info(f"skip_id: {g['content']['id']}")
 
                     #print (gm_list, 'xxxxx')
 
@@ -185,3 +231,5 @@ def metadata_revise(
             except Exception as e:
                 print (f"No more page left {e}")
                 break
+
+    logger.info(f"Total Skipped: {total_skipped}")

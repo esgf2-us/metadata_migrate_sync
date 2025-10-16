@@ -295,6 +295,9 @@ def query_globus(
                                 "values": [value_1],
                             },
                         }
+                    case "exists":
+                        filter_cond = {"type": value_2, "field_name": key[2:]}
+                        print (filter_cond)
                     case _:
                         # handling the array seperated by ','
                         # filter_cond = {"type": value_2, "field_name": key[2:], "values": [value_1]}
@@ -947,6 +950,29 @@ def revise(
         revise_json = revise_json,
         revise_item = revise_item,
     )
+
+@app.command()
+def revise_fix(
+    globus_ep: str = typer.Argument(
+        help="globus index", callback=_validate_tgt_ep
+    ),
+    project: str = typer.Argument(
+        help="project name", callback=_validate_project
+    ),
+    revise_json: str =  typer.Argument(
+        help="json file containing the document needed to revise"
+    ),
+) -> None:
+    """revise to fix metadata"""
+    metadata_revise(
+        globus_ep = globus_ep,
+        project = project,
+        revise_json = revise_json,
+        revise_item = {},
+        meta = "files",
+        is_fix = True,
+    )
+    
 
 @app.command()
 def replica(

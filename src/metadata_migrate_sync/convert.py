@@ -346,7 +346,9 @@ def fix_dtype_gmeta(
                 fix_int = int(var_int_scalar)
             except ValueError:
                 if str(var_int_scalar).isdigit() and (
-                    "CMIP3" in project_id or "CMIP5" in project_id):
+                    "CMIP3" in project_id or "CMIP5" in project_id or
+                    "e3sm-supplement" in project_id
+                ):
                     fix_int = int(var_int_scalar)
                 else:
                     fix_int = None
@@ -365,4 +367,16 @@ def fix_dtype_gmeta(
         dataset_id_fix = _extract_scalar_value(dataset_id)
         if dataset_id_fix is not None:
             gmeta["entries"][0]["content"]["dataset_id"] = dataset_id_fix
+
+
+    # special fixes
+    if "CMIP3" in project_id:
+        if 'retracted' not in gmeta["entries"][0]["content"]:
+            gmeta["entries"][0]["content"]["retracted"]=False
+
+    if "input4MIPs" in project_id:
+        if "25 km" in gmeta["entries"][0]["content"]["deprecated"]:
+            if 'latest' in gmeta["entries"][0]["content"]:
+                gmeta["entries"][0]["content"]["deprecated"] = not gmeta["entries"][0]["content"]["latest"]
+
     return gmeta
