@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", function() {
         
         var table = new Tabulator("#table1", {
           data: data, // Load data into the table
-          layout: "fitDataTable", // Fit columns to width of table
+          layout: "fitColumns", // Fit columns to width of table
           columns: [ // Define table columns
             { title: "Name", field: "display_name" },
             { title: "Index", field: "id", width: 300 },
@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var title = "Solr Index -> Public Index";
   } else {
     var metas = ["entries"];
-    var projs = ["cmip6plus", "e3sm", "drcdp", "input4mips", "obs4mips"];
+    var projs = ["cmip6plus", "e3sm", "drcdp", "input4mips", "obs4mips", "wrpmip"];
     var title = "Stage Indexes -> Public Index";
   }
 
@@ -146,6 +146,40 @@ function load_json (title, proj, meta) {
             },
 
           });
+        })  // data
+        .catch(error => console.error('Error loading JSON data:', error));
+      fetch("https://raw.githubusercontent.com/minxu74/metadata_docs/refs/heads/main/docs/Synchronization/jsons/" + proj + "_status.json")
+        .then(response => response.json())
+        .then(data => {
+          var table = new Tabulator("#tab_" + proj + "_status", {
+            layout:"fitDataTable",
+            height:"800px",
+            columnDefaults:{
+              resizable:false,
+            },
+            data: data, //.slice(-10),
+            columns:[
+                {title:"Time (DD/MM/YY)", field:"time", formatter:"datetime", formatterParams:{
+                  inputFormat:"yyyy-MM-dd",
+                  outputFormat:"dd/MM/yy",
+                  invalidPlaceholder:"(invalid date)",
+                  timezone:"utc",
+                },
+                sorter:"datetime", sorterParams:{
+                  format:"yyyy-MM-dd",
+                  alignEmptyValues:"top",
+                }, vertAlign:"middle"},
+                {title:"Project", field:"project", formatter:"textarea", vertAlign:"middle", sorter:"string"},
+                {title:"Publishing Node", field:"publishing node", formatter:"textarea", vertAlign:"middle", sorter:"string"},
+                {title:"Datasets", field:"Datasets", formatter:function(cell){
+                  return (cell.getValue() ?? 0).toLocaleString();}, vertAlign:"middle", sorter:"numeric"},
+                {title:"Files", field:"Files", formatter:function(cell){
+                  return (cell.getValue() ?? 0).toLocaleString();}, vertAlign:"middle", sorter:"numeric"},
+            ],
+            initialSort: [
+                {column: "time", dir: "desc"} // 'desc' for newest to oldest
+            ],
+          })  // table
         })  // data
         .catch(error => console.error('Error loading JSON data:', error));
 
