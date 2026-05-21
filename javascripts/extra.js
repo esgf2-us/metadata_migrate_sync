@@ -159,9 +159,9 @@ function load_json (title, proj, meta) {
             },
             data: data, //.slice(-10),
             columns:[
-                {title:"Time (DD/MM/YY)", field:"time", formatter:"datetime", formatterParams:{
+                {title:"Time (MM/DD/YY)", field:"time", formatter:"datetime", formatterParams:{
                   inputFormat:"yyyy-MM-dd",
-                  outputFormat:"dd/MM/yy",
+                  outputFormat:"MM/dd/yy",
                   invalidPlaceholder:"(invalid date)",
                   timezone:"utc",
                 },
