@@ -36,3 +36,4 @@ class ProjectReadWrite(str, Enum):
     E3SM = "e3sm"
     INPUT4MIPS = "input4MIPs"
     OBS4MIPS = "obs4MIPs"
+    WRPMIP = "WrPMIP"

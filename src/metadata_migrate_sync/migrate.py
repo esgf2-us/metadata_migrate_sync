@@ -27,6 +27,7 @@ def metadata_migrate(
     metatype: Literal["files", "datasets"],
     project: ProjectReadOnly | ProjectReadWrite,
     production: bool,
+    final: bool,
 ) -> None:
     """Migrate metadata/documents from solr indexes to the globus indexes."""
     # setup the provenance
@@ -67,17 +68,31 @@ def metadata_migrate(
     # query generator
     # for ReadWirte projects, need a cut-off date.
     if project in ProjectReadWrite:
-        search_dict = {
-            **params_search,
-            "q": "project:" + project.value,
-            "fq": "_timestamp:[* TO 2025-03-16T00:00:00Z]",
-        }
+        if final:
+            search_dict = {
+                **params_search,
+                "q": "project:" + project.value,
+                "fq": "_timestamp:[2025-03-16T00:00:00Z TO 2025-04-28T00:00:00Z]",
+            }
+        else:
+            search_dict = {
+                **params_search,
+                "q": "project:" + project.value,
+                "fq": "_timestamp:[* TO 2025-03-16T00:00:00Z]",
+            }
     else:
-        search_dict = {
-            **params_search,
-            "q": "project:" + project.value,
-            "fq": "_timestamp:[* TO 2025-03-16T00:00:00Z]",
-        }
+        if final:
+            search_dict = {
+                **params_search,
+                "q": "project:" + project.value,
+                "fq": "_timestamp:[2025-03-16T00:00:00Z TO 2025-04-28T00:00:00Z]",
+            }
+        else:
+            search_dict = {
+                **params_search,
+                "q": "project:" + project.value,
+                "fq": "_timestamp:[* TO 2025-03-16T00:00:00Z]",
+            }
 
     if production:
         search_dict["rows"] = 1500
