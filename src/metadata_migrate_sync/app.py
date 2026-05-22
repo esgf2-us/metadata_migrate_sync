@@ -18,6 +18,7 @@ import time
 from enum import Enum
 
 import typer
+from pydantic import ValidationError
 
 #-from rich import print
 from metadata_migrate_sync.check_ingest_tasks import check_ingest_tasks
@@ -33,9 +34,11 @@ from metadata_migrate_sync.sync import metadata_sync
 from metadata_migrate_sync.transfer import globus_transfer, paginate_json
 from metadata_migrate_sync.util import create_lock, release_lock
 
-from metadata_migrate_sync.lite_model import enforced_field
+from metadata_migrate_sync.lite_model import enforced_field, enforced_field_extend
 
 from metadata_migrate_sync.fixes import metadata_fixes
+
+from metadata_migrate_sync.db_query import query_files_table_context
 
 sys.setrecursionlimit(10000)
 
@@ -205,10 +208,14 @@ def query_globus(
     globus_ep: str = typer.Argument(
         help="globus end point name", callback=_validate_tgt_ep),
     project: str = typer.Argument(help="project name", callback=_validate_project),
-    order_by: str = typer.Option(help="sort the result by field_name.asc or field_name.desc"),
+    order_by: str = typer.Option(
+        help="sort the result by field_name.asc or field_name.desc"
+    ),
     limit: int = typer.Option(10, help="the limit of a page"),
     offset: int = typer.Option(0, help="the offset of a page (less than 10000)"),
-    time_range: str = typer.Option(help="time range in search"),
+    time_range: str = typer.Option(
+        "TO",
+        help="time range in search"),
     save: str = typer.Option(None, help="save the page to the json file"),
     printvar: str = typer.Option(None, help="print the content"),
     paginator: str = typer.Option("post", help="globus query type (post and scroll"),
@@ -218,7 +225,8 @@ def query_globus(
     total: bool=typer.Option(False, help="just print the total info"),
     raw: bool=typer.Option(False, help="just print the total info"),
     verbose: bool=typer.Option(False, help="verbose"),
-    validate: bool=typer.Option(False, help="type validation")
+    validate: bool=typer.Option(False, help="type validation"),
+    validate_extend: bool=typer.Option(False, help="type validation"),
 ) -> None:
     """Search globus index with normal and scroll paginations."""
     if "." not in order_by:
@@ -356,7 +364,7 @@ def query_globus(
             print(page.get("total"))
             return
 
-
+        page_size = page.get("total")
 
         if page_num >= 10 and not complete:
             break
@@ -373,9 +381,17 @@ def query_globus(
                     "subject": g["subject"],
                 }
                 # validate
-
                 if validate:
                     enforced_field.model_validate(g["entries"][0]["content"], strict=True)
+
+                if validate_extend:
+                    try:
+                        enforced_field_extend.model_validate(g["entries"][0]["content"], strict=True)
+                    except ValidationError as e:
+                        print(g["entries"][0]["content"]["id"])
+
+                    continue
+                        
 
                 for var in printvar.split(','):
                     if var in g["entries"][0]["content"]:
@@ -387,22 +403,16 @@ def query_globus(
                         )
                         print_dict.update({
                             var: g["entries"][0]["content"][var],
-                            #-f"{var} type": type(prt_var).__name__,
                         })
                     elif var in page and var != "gmeta":
                         print_dict.update({
                             var: page[var],
-                            #-f"{var} type": type(page[var]).__name__,
                         })
-
-
                 if raw:
                     print (print_dict)
                 else:
                     print (json.dumps(print_dict))
 
-                #-if k >= 10:
-                #-   break
 @app.command()
 def check_task(
     task_id: str = typer.Option(None, help="the ingest task id"),
@@ -593,6 +603,11 @@ def compare_globus(
                 "field_name": "data_node",
                 "values": data_node_list_1
             },
+            {
+                "type": "range",
+                "field_name": "_timestamp",
+                "values": [{"from": "*", "to": "2025-11-11T00:00:00Z"}]
+            }
         ],
         "limit": 5000
     }
@@ -621,6 +636,11 @@ def compare_globus(
                 "field_name": "data_node",
                 "values": data_node_list_2
             },
+            {
+                "type": "range",
+                "field_name": "_timestamp",
+                "values": [{"from": "*", "to": "2025-11-11T00:00:00Z"}]
+            }
         ],
         "limit": 5000
     }
@@ -1037,6 +1057,23 @@ def fixes(
         dry_run = dry_run,
     )
 
+@app.command()
+def check_skipped(
+    db_file: str,
+    meta: str,
+) -> None:
+
+    skipped_list = query_files_table_context(db_file, meta)
+
+    # db_file = synchronization_stage_public_obs4MIPs_2025-10-31.sqlite
+    # replication_stage_stage_input4MIPs_Dataset_2025-10-29.sqlite
+    temp = pathlib.Path(db_file).name.split('_')
+    operation = temp[0]
+    project = temp[3]
+    timestamp = temp[-1].split('.sqlite')[0]
+
+    out_dict={"operation":operation, "project": project, "timestamp": timestamp, "ids":skipped_list}
+    print (json.dumps(out_dict))
 
 if __name__ == "__main__":
     app()
