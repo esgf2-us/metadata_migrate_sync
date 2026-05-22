@@ -3,6 +3,9 @@ hide:
   - navigation
 ---
 
+!!! alert
+
+    __New__! [__live sync status__](Synchronization/index.md)
 
 # ESGF 1.5 Metadata Migration and Synchronization
 

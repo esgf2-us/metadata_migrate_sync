@@ -182,6 +182,8 @@ def metadata_sync(
     logger.info(f"initialized the sqlite database at {prov.db_file}")
 
     # query generator
+    # for e3sm, "values": ["CMIP6-E3SM-Ext"] if project.value == "e3sm" else [project.value]
+    # but change to e3sm as it is needed by Metagrid and confirmed by Sasha
     search_dict = {
         "filters":[
             {
@@ -213,8 +215,6 @@ def metadata_sync(
     else:
         search_dict["limit"] = 20
         maxpage = 2
-
-
 
     gq = GlobusQuery(
         end_point=prov.source_index_id,
