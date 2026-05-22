@@ -1,6 +1,6 @@
 """the lite pydantic model to validat esgf document"""
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 
 
@@ -32,3 +32,9 @@ class enforced_field_relax(BaseModel):
     deprecated: bool | None = None
     version: int
     dataset_id: str | None = None
+
+
+class enforced_field_extend(enforced_field):
+    """extend version."""
+    timestamp_: str = Field(..., alias='_timestamp')
+
