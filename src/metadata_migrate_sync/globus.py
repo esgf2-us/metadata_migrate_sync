@@ -216,6 +216,7 @@ class GlobusClient:
             ProjectReadWrite.E3SM.value: "f5a2d874-30ef-40a0-8c8d-e2498f3bd026",
             ProjectReadWrite.INPUT4MIPS.value: "3c71c174-c8c8-43e5-994c-10dd4251579a",
             ProjectReadWrite.OBS4MIPS.value: "3cfaa44b-e549-487e-8058-5923aaf095b4",
+            ProjectReadWrite.WRPMIP.value: "8e181e1e-412e-446b-a5ae-42cfeed91481",
         },
     }
     globus_clients["test"] = ClientModel(**_client_test)
