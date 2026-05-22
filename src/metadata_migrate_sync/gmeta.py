@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
 
-from metadata_migrate_sync.lite_model import enforced_field, enforced_field_relax
+from metadata_migrate_sync.lite_model import enforced_field, enforced_field_relax, enforced_field_extend
 from pydantic import ValidationError
 
 
@@ -47,11 +47,13 @@ class GmetaGenerator(ABC):
 
             if (
                 "CMIP3" in entry["project"] or "CMIP5" in entry["project"] or
-                "e3sm-supplement" in entry["project"]
+                "e3sm-supplement" in entry["project"] or
+                ("CMIP6" in entry["project"] and "MPI-ESM1-2-LR" in entry["source_id"]) or
+                ("CMIP6" in entry["project"] and "CAMS-CSM1-0" in entry["source_id"])
             ):
                 enforced_field_relax.model_validate(entry, strict=True)
             else:
-                enforced_field.model_validate(entry, strict=True)
+                enforced_field_extend.model_validate(entry, strict=True)
             return False
         except ValidationError as e:
             return True
