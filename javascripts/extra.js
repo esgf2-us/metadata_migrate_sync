@@ -148,6 +148,33 @@ function load_json (title, proj, meta) {
           });
         })  // data
         .catch(error => console.error('Error loading JSON data:', error));
+
+
+
+
+      async function getLastCommitDate() {
+          const url =
+              'https://api.github.com/repos/minxu74/metadata_docs/commits/main';
+      
+          const response = await fetch(url);
+      
+          const data = await response.json();
+      
+          return data.commit.author.date;
+      }
+
+
+      async function updatePage() {
+          const lastUpdatedDate = getLastCommitDate();
+          console.log(lastUpdatedDate)
+          document.getElementById('last-updated').textContent = lastUpdatedDate;
+      }
+
+      //updatePage();
+      getLastCommitDate().then(date => {
+          document.getElementById('last-updated').textContent = date;
+      });
+
       fetch("https://raw.githubusercontent.com/minxu74/metadata_docs/refs/heads/main/docs/Synchronization/jsons/" + proj + "_status.json")
         .then(response => response.json())
         .then(data => {
