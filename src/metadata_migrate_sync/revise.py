@@ -21,7 +21,7 @@ from metadata_migrate_sync.transfer import paginate_json
 @validate_call
 def metadata_revise(
     *,
-    globus_ep: Literal["public"],
+    globus_ep: Literal["public", "stage"],
     project: ProjectReadOnly | ProjectReadWrite,
     meta: str=Literal["File", "Dataset"],
     revise_json: str,
@@ -133,7 +133,8 @@ def metadata_revise(
 
     logger.info("instantiate query and ingest classes")
 
-    total_skipped = 0 
+    total_skipped = 0
+    total_revised = 0
 
     page = page_start
 
@@ -174,17 +175,11 @@ def metadata_revise(
                         gm =  ModifiedGmetaGenerator(
                             modifier = revise_gmeta,
                             revised_by = "Min Xu",
-                            #-revised_items = {"retracted":False, "latest":True},
-                            #-revised_value = [True, False],
-                            #revised_items = {"latest": True},
-                            #revised_value = [0.0001],
-                            #-revised_items = {"url": 'cmip5_css02/data'},
-                            #-revised_value = ['cmip5_css02_data'],
-                            #-revised_option = "include",
                             revised_items = revise_item["revised_items"],
                             revised_value = revise_item["revised_value"],
                             revised_option = revise_item["revised_option"],
                         )
+
 
                     gm_list, gm_list_skip = gm.generate(gpage)
 
@@ -193,6 +188,9 @@ def metadata_revise(
                     ) == 0:
                         continue
 
+                    total_revised += len(
+                              gm_list[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
+                    )
 
                     if len(
                        gm_list_skip[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
@@ -233,3 +231,4 @@ def metadata_revise(
                 break
 
     logger.info(f"Total Skipped: {total_skipped}")
+    logger.info(f"Total Revised: {total_revised}")
