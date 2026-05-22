@@ -316,6 +316,15 @@ def fix_dtype_gmeta(
 ) -> dict[str, Any]:
     """data type fixes"""
     # 
+
+    if '_timestamp' in gmeta["entries"][0]["content"]:
+
+        tsvar = gmeta["entries"][0]["content"]["_timestamp"]
+        tsvar_scalar = _extract_scalar_value(tsvar)
+
+        if tsvar_scalar is not None:
+            gmeta["entries"][0]["content"]["_timestamp"] = tsvar_scalar
+
     for item in ['latest', 'replica', 'retracted', 'deprecated']:
         if item not in gmeta["entries"][0]["content"]:
             continue
@@ -333,6 +342,8 @@ def fix_dtype_gmeta(
 
         metadata_id = gmeta["entries"][0]["content"]["id"]
         project_id = gmeta["entries"][0]["content"]["project"]
+        source_id = gmeta["entries"][0]["content"]["source_id"]
+
         # list -> scalar
         var_int_scalar = _extract_scalar_value(var_int)
 
@@ -342,12 +353,17 @@ def fix_dtype_gmeta(
                 if _extract_version_from_id(metadata_id):
                     var_int_scalar = _extract_version_from_id(metadata_id)
             try:
-                datetime.datetime.strptime(str(var_int_scalar), "%Y%m%d")
-                fix_int = int(var_int_scalar)
+
+                if "CMIP6" in project_id and "MPI-ESM1-2-LR" in source_id:
+                    fix_int = int(var_int_scalar)
+                else:
+                    datetime.datetime.strptime(str(var_int_scalar), "%Y%m%d")
+                    fix_int = int(var_int_scalar)
             except ValueError:
                 if str(var_int_scalar).isdigit() and (
                     "CMIP3" in project_id or "CMIP5" in project_id or
-                    "e3sm-supplement" in project_id
+                    "e3sm-supplement" in project_id or
+                    ("CMIP6" in project_id and "CAMS-CSM1-0" in source_id)
                 ):
                     fix_int = int(var_int_scalar)
                 else:
@@ -368,15 +384,32 @@ def fix_dtype_gmeta(
         if dataset_id_fix is not None:
             gmeta["entries"][0]["content"]["dataset_id"] = dataset_id_fix
 
-
     # special fixes
     if "CMIP3" in project_id:
         if 'retracted' not in gmeta["entries"][0]["content"]:
             gmeta["entries"][0]["content"]["retracted"]=False
 
     if "input4MIPs" in project_id:
-        if "25 km" in gmeta["entries"][0]["content"]["deprecated"]:
+
+        if "deprecated" in gmeta["entries"][0]["content"]:
+            if isinstance(gmeta["entries"][0]["content"]["deprecated"], list):
+                if "25 km" in gmeta["entries"][0]["content"]["deprecated"]:
+                    if 'latest' in gmeta["entries"][0]["content"]:
+                        gmeta["entries"][0]["content"]["deprecated"] = not gmeta["entries"][0]["content"]["latest"]
+        else:
             if 'latest' in gmeta["entries"][0]["content"]:
                 gmeta["entries"][0]["content"]["deprecated"] = not gmeta["entries"][0]["content"]["latest"]
+
+    if "GeoMIP" in project_id:
+        if 'retracted' not in gmeta["entries"][0]["content"]:
+            gmeta["entries"][0]["content"]["retracted"]=False
+
+    if "LUCID" in project_id:
+        if 'retracted' not in gmeta["entries"][0]["content"]:
+            gmeta["entries"][0]["content"]["retracted"]=False
+
+    if "TAMIP" in project_id:
+        if 'retracted' not in gmeta["entries"][0]["content"]:
+            gmeta["entries"][0]["content"]["retracted"]=False
 
     return gmeta
