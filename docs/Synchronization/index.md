@@ -17,6 +17,8 @@ title: Synchronization Status
 
 
 Results since __01/01/2026__ (for earlier results, contact Min Xu)
+<p>Last updated at: <span id="last-updated"></span></p>
+
 === "CMIP6Plus"
     <div id="tab_cmip6plus_status"></div>
     <br>
