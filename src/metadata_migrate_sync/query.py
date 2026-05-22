@@ -172,7 +172,8 @@ class SolrQuery(BaseQuery):
 
         except RequestException as e:
             logger.error(f"Request failed at {url}: {e}")
-            return None
+            #return None
+            raise RequestException
 
     def run(self) -> Generator[Any, None, None]:
         """Query solr index in a paginated manner.
@@ -184,6 +185,7 @@ class SolrQuery(BaseQuery):
         logger = provenance.get_logger(__name__)
 
         while True:
+
             result = self._make_request(self.end_point, self.query)
 
             if not result:
@@ -192,6 +194,7 @@ class SolrQuery(BaseQuery):
             response_json, response_time, response_url = result
             if self.skip_prov:
                 logger.info("skip the provenance and database update for solr query")
+                self._numFound = response_json.get("response").get("numFound")
             else:
                 self.prov_collect(response_url, response_time, response_json)
 
@@ -412,7 +415,7 @@ class GlobusQuery(BaseQuery):
 
                                 session.commit()
                             else:
-                                self.query["offset"] = int(last_query.cursorMark_next)
+                                #-bug: self.query["offset"] = int(last_query.cursorMark_next)
                                 self._restart = False
 
                                 if self.paginator == "scroll":
@@ -425,7 +428,7 @@ class GlobusQuery(BaseQuery):
                                 )
 
 
-    def run(self) -> Generator[Any, None, None]:
+    def run(self) -> Generator[Any, None, None] | dict[Any, Any]:
         """Query the globus index in a pagination way."""
         logger = (
             provenance._instance.get_logger(__name__)
@@ -437,7 +440,8 @@ class GlobusQuery(BaseQuery):
         gc = GlobusClient()
         cm = gc.get_client(self.ep_name)
         sc = cm.search_client
-        sq = cm.search_query
+        #sq = cm.search_query
+        sq = SearchQuery("")
 
 
         _globus_index_id = cm.indexes[index_name]
@@ -447,7 +451,6 @@ class GlobusQuery(BaseQuery):
         sq["filters"] = self.query["filters"]
 
         page_size = self.query["limit"]
-        offset = self.query["offset"]
 
         total_returned = 0
 
@@ -477,6 +480,7 @@ class GlobusQuery(BaseQuery):
 
         if self.paginator == "post":
 
+            offset = self.query["offset"]
             max_retries = 3
             sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
             while True:
@@ -484,6 +488,7 @@ class GlobusQuery(BaseQuery):
                 r = None
                 while retries < max_retries:
                     try:
+
                         sq.set_query("*").set_limit(page_size).set_offset(offset)
 
                         start = time.time()
@@ -499,14 +504,18 @@ class GlobusQuery(BaseQuery):
                         logger.error(f"Error happened in globus query: {e}")
                         raise  # Re-raise other errors
 
-                if not r:
+                if not r or not r["gmeta"]:
                     break
 
                 entries = r.data
-
-                offset += page_size
                 total_returned += len(entries)
                 self._total_returned = total_returned
+
+                if not self.generator:
+                    offset = 0
+                else:
+                    offset += page_size
+
                 if self.skip_prov:
                     logger.info("skip the provenance and database update")
                 else:

@@ -13,6 +13,7 @@ from sqlalchemy.orm import object_session
 
 from metadata_migrate_sync.database import Datasets, Files, Ingest, MigrationDB, Query
 from metadata_migrate_sync.globus import GlobusClient, GlobusIngestModel
+from metadata_migrate_sync.gmeta import StandardGmetaGenerator
 from metadata_migrate_sync.project import ProjectReadOnly, ProjectReadWrite
 from metadata_migrate_sync.provenance import provenance
 
@@ -117,6 +118,7 @@ class GlobusIngest(BaseIngest):
         DBsession = MigrationDB.get_session()
         with DBsession() as session:
 
+            # check if current_query associated with the session
             if object_session(current_query) is None:
                 last_query = session.query(Query).order_by(Query.id.desc()).first()
             else:
@@ -125,11 +127,12 @@ class GlobusIngest(BaseIngest):
             n_datasets = 0
             n_files = 0
             for doc in docs:
-                if metatype == "files":
+
+                if metatype == "files" or metatype == "File":
                     urls = ",".join(doc.get("url")) if "url" in doc else "NoURL"
                     files_obj = Files(
                         query=last_query,
-                        source_index=last_query.index_id,
+                        source_index=last_query.index_id if last_query else 0,
                         target_index=str(self.end_point),
                         files_id=doc.get("id"),
                         size=(doc.get("size") if "size" in doc else -1),
@@ -140,10 +143,11 @@ class GlobusIngest(BaseIngest):
 
                     session.add(files_obj)
 
-                elif metatype == "datasets":
+                elif metatype == "datasets" or metatype == "Dataset":
+
                     datasets_obj = Datasets(
                         query=last_query,
-                        source_index=last_query.index_id,
+                        source_index=last_query.index_id if last_query else 0,
                         target_index=str(self.end_point),
                         datasets_id=doc.get("id"),
                         success=-9 if "skip_ingest" in doc else 0,
@@ -215,35 +219,40 @@ def generate_gmeta_list(
 def generate_gmeta_list_globus(
     gdoc: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Generate gmeta list for ingestion from globus documents."""
-    gmeta_entries = []
+    """Ggenerate gmeta list for ingestion from globus documents."""
+    return StandardGmetaGenerator().generate(gdoc)
 
-    # need to add the "skip_ingest: True"
-    # in the content if there are skips
-    gmeta_entries_skipped: list[dict[str, Any]] = []
-
-    for g in gdoc["gmeta"]:
-
-        #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-        #g["entries"][0]["content"]["_timestamp"] = datetime.now(
-        #     timezone.utc).isoformat().replace("+00:00", "Z")
-
-        gmeta_dict = {
-            "id": g["entries"][0]["entry_id"],
-            "subject": g["subject"],
-            "visible_to": ["public"],
-            "content":g["entries"][0]["content"],
-        }
-        gmeta_entries.append(gmeta_dict)
-
-    gmeta_ingest = {
-        "ingest_type": "GMetaList",
-        "ingest_data": {"gmeta": gmeta_entries},
-    }
-
-    gmeta_ingest_skipped = {
-        "ingest_type": "GMetaList",
-        "ingest_data": {"gmeta": gmeta_entries_skipped},
-    }
-
-    return gmeta_ingest, gmeta_ingest_skipped
+#-def generate_gmeta_list_globus(
+#-    gdoc: dict[str, Any]
+#-) -> tuple[dict[str, Any], dict[str, Any]]:
+#-    """Generate gmeta list for ingestion from globus documents."""
+#-    gmeta_entries = []
+#-
+#-    # need to add the "skip_ingest: True"
+#-    # in the content if there are skips
+#-    gmeta_entries_skipped: list[dict[str, Any]] = []
+#-
+#-    for g in gdoc["gmeta"]:
+#-
+#-        #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+#-        #g["entries"][0]["content"]["_timestamp"] = datetime.now(
+#-        #     timezone.utc).isoformat().replace("+00:00", "Z")
+#-        gmeta_dict = {
+#-            "id": g["entries"][0]["entry_id"],
+#-            "subject": g["subject"],
+#-            "visible_to": ["public"],
+#-            "content":g["entries"][0]["content"],
+#-        }
+#-        gmeta_entries.append(gmeta_dict)
+#-
+#-    gmeta_ingest = {
+#-        "ingest_type": "GMetaList",
+#-        "ingest_data": {"gmeta": gmeta_entries},
+#-    }
+#-
+#-    gmeta_ingest_skipped = {
+#-        "ingest_type": "GMetaList",
+#-        "ingest_data": {"gmeta": gmeta_entries_skipped},
+#-    }
+#-
+#-    return gmeta_ingest, gmeta_ingest_skipped
