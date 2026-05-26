@@ -466,20 +466,30 @@ class GlobusQuery(BaseQuery):
                 sq["marker"] = self.query["marker"]
                 self.query["premarker"] = self.query["marker"]
 
-            start = time.time()
-            for batch in sc.paginated.scroll(_globus_index_id, sq):
-                elapsed_time = time.time() - start
+            # scroll not accept the vesion
+            sq.pop("@version")
+
+            try:
                 start = time.time()
+                for batch in sc.paginated.scroll(_globus_index_id, sq):
+                    elapsed_time = time.time() - start
+                    start = time.time()
 
-                entries = batch.data
-                total_returned += len(entries)
-                self._total_returned = total_returned
+                    entries = batch.data
+                    total_returned += len(entries)
+                    self._total_returned = total_returned
 
-                if self.skip_prov:
-                    logger.info("skip the provenance and database update")
-                else:
-                    self.prov_collect(entries, elapsed_time, sq)
-                yield entries
+                    if self.skip_prov:
+                        logger.info("skip the provenance and database update")
+                    else:
+                        self.prov_collect(entries, elapsed_time, sq)
+                    yield entries
+            except Exception as e:
+                logger.error(e)
+                logger.error(e.text)
+                logger.error(e.code)
+                logger.error(e.http_status)
+                raise RuntimeError
 
         if self.paginator == "post":
 
