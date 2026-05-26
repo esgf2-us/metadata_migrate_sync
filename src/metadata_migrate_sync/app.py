@@ -209,6 +209,7 @@ def query_globus(
         help="globus end point name", callback=_validate_tgt_ep),
     project: str = typer.Argument(help="project name", callback=_validate_project),
     order_by: str = typer.Option(
+        "_timestamp.asc",
         help="sort the result by field_name.asc or field_name.desc"
     ),
     limit: int = typer.Option(10, help="the limit of a page"),

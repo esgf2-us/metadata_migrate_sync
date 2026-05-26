@@ -21,7 +21,7 @@ from metadata_migrate_sync.transfer import paginate_json
 @validate_call
 def metadata_revise(
     *,
-    globus_ep: Literal["public", "stage"],
+    globus_ep: Literal["public", "stage", "backup"],  # "backup" for test purpose
     project: ProjectReadOnly | ProjectReadWrite,
     meta: str=Literal["File", "Dataset"],
     revise_json: str,
@@ -201,8 +201,6 @@ def metadata_revise(
                         )
                         for g in gm_list_skip[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]:
                             logger.info(f"skip_id: {g['content']['id']}")
-
-                    #print (gm_list, 'xxxxx')
 
                     #XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                     ig._submitted = False
