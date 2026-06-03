@@ -9,7 +9,8 @@ from typing import Any, Literal
 from uuid import UUID
 
 import requests
-from globus_sdk import GlobusAPIError, SearchQuery
+from globus_sdk import GlobusAPIError, SearchQueryV1
+from globus_sdk._missing import MISSING
 from pydantic import AnyUrl, BaseModel
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError, RequestException, RetryError
@@ -441,7 +442,7 @@ class GlobusQuery(BaseQuery):
         cm = gc.get_client(self.ep_name)
         sc = cm.search_client
         #sq = cm.search_query
-        sq = SearchQuery("")
+        sq = SearchQueryV1()
 
 
         _globus_index_id = cm.indexes[index_name]
@@ -456,40 +457,57 @@ class GlobusQuery(BaseQuery):
 
 
         if self.paginator == "scroll":
-            sq.set_query("*").set_limit(page_size)
+            #sq.set_query("*").set_limit(page_size)
+            sq["q"] = "*"
+            sq["limit"]= page_size
             self.query["premarker"] = "*"
 
             if "marker" in self.query and self.query["marker"] is not None:
                 sq["marker"] = self.query["marker"]
                 self.query["premarker"] = self.query["marker"]
 
-            start = time.time()
-            for batch in sc.paginated.scroll(_globus_index_id, sq):
-                elapsed_time = time.time() - start
+            # scroll not accept the vesion
+            sq.pop("@version")
+
+            try:
                 start = time.time()
+                for batch in sc.paginated.scroll(_globus_index_id, sq):
+                    elapsed_time = time.time() - start
+                    start = time.time()
 
-                entries = batch.data
-                total_returned += len(entries)
-                self._total_returned = total_returned
+                    entries = batch.data
+                    total_returned += len(entries)
+                    self._total_returned = total_returned
 
-                if self.skip_prov:
-                    logger.info("skip the provenance and database update")
-                else:
-                    self.prov_collect(entries, elapsed_time, sq)
-                yield entries
+                    if self.skip_prov:
+                        logger.info("skip the provenance and database update")
+                    else:
+                        self.prov_collect(entries, elapsed_time, sq)
+                    yield entries
+            except Exception as e:
+                logger.error(e)
+                logger.error(e.text)
+                logger.error(e.code)
+                logger.error(e.http_status)
+                raise RuntimeError
 
         if self.paginator == "post":
 
             offset = self.query["offset"]
             max_retries = 3
-            sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
+            #sq.add_sort(self.query.get("sort_field"), order=self.query.get("sort"))
+            # "sort": [{"field_name": "path.to.date", "order": "asc"}],
+            sq["sort"] = [{"field_name": self.query.get("sort_field"), "order":self.query.get("sort")}]
             while True:
                 retries = 0
                 r = None
                 while retries < max_retries:
                     try:
 
-                        sq.set_query("*").set_limit(page_size).set_offset(offset)
+                        #sq.set_query("*").set_limit(page_size).set_offset(offset)
+                        sq["q"] = "*"
+                        sq["limit"]= page_size
+                        sq["offset"] = offset
 
                         start = time.time()
                         r = sc.post_search(_globus_index_id, sq)
@@ -531,7 +549,7 @@ class GlobusQuery(BaseQuery):
         self,
         entries: dict[Any, Any],
         req_time: float,
-        sq: SearchQuery
+        sq: SearchQueryV1
     ) -> None:
         """Collect provenance and update database from a globus query."""
         logger = provenance._instance.get_logger(__name__)
@@ -570,6 +588,12 @@ class GlobusQuery(BaseQuery):
                     if f["field_name"] == "_timestamp":
                         date_range = json.dumps(f["values"])
 
+                cleaned_sq = {
+                    k: v
+                    for k, v in sq.items()
+                    if v is not MISSING
+                }
+
                 query_obj = Query(
                     project=self.project,
                     project_type=(
@@ -577,7 +601,8 @@ class GlobusQuery(BaseQuery):
                         if isinstance(self.project, ProjectReadOnly)
                         else "readwrite"
                     ),
-                    query_str=json.dumps(sq.__dict__["data"]),
+                    #query_str=json.dumps(sq.__dict__["data"]),
+                    query_str=json.dumps(cleaned_sq),
                     query_type="globus",
                     query_time=req_time,
                     date_range=date_range,

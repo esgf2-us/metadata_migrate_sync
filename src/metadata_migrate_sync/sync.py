@@ -294,7 +294,8 @@ def metadata_sync(
                     logger.info(f"Skipped {skip_size}")
 
                 if len(gmeta_ingest[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]) == 0:
-                    break
+                    #break
+                    continue  #possble entire page skipped, but next page, there are no-skipped docs
 
                 gmeta_list = gmeta_ingest[GlobusCV.INGEST_DATA.value][GlobusCV.GMETA.value]
 

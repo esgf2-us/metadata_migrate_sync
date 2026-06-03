@@ -1,17 +1,22 @@
 """Globus index handlers and CVs and methods."""
 import pathlib
+import os
 from enum import Enum
 from typing import Any, Literal
 from uuid import UUID
 
 from globus_sdk import (
+    ClientCredentialsAuthorizer,
     NativeAppAuthClient,
     RefreshTokenAuthorizer,
     SearchClient,
-    SearchQuery,
+    SearchQueryV1,
     TransferClient,
+    AccessTokenAuthorizer,
+    ConfidentialAppAuthClient,
 )
-from globus_sdk.tokenstorage import SimpleJSONFileAdapter
+#from globus_sdk.tokenstorage import SimpleJSONFileAdapter
+from globus_sdk.token_storage import JSONTokenStorage
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from metadata_migrate_sync.esgf_index_schema.schema_solr import DatasetDocs, FileDocs
@@ -66,7 +71,8 @@ def get_authorized_search_client(
     """Return a transfer client authorized to make transfers."""
     config_path = pathlib.Path.home() / ".ssh"
     config_path.mkdir(parents=True, exist_ok=True)
-    token_adapter = SimpleJSONFileAdapter(config_path / token_name)
+    #token_adapter = SimpleJSONFileAdapter(config_path / token_name)
+    token_adapter = JSONTokenStorage(config_path / token_name)
     app_client = NativeAppAuthClient(app_client_id)
 
     if token_adapter.file_exists():
@@ -91,19 +97,41 @@ Globus will generate a code which you must copy and paste here and then hit <ent
         )
         auth_code = input("> ").strip()
         token_response = app_client.oauth2_exchange_code_for_tokens(auth_code)
-        token_adapter.store(token_response)
-        tokens = token_response.by_resource_server["search.api.globus.org"]
+        #token_adapter.store(token_response)
+        token_adapter.store_token_response(token_response)
+        #tokens = token_response.by_resource_server["search.api.globus.org"]
+        tokens = token_adapter.get_token_data("search.api.globus.org")
+        
 
     authorizer = RefreshTokenAuthorizer(
-        tokens["refresh_token"],
+        tokens.refresh_token,
         app_client,
-        access_token=tokens["access_token"],
-        expires_at=tokens["expires_at_seconds"],
-        on_refresh=token_adapter.on_refresh,
+        access_token=tokens.access_token,
+        expires_at=tokens.expires_at_seconds,
+        #on_refresh=token_adapter.on_refresh,
+        on_refresh=token_adapter.store_token_response,
     )
     search_client = SearchClient(authorizer=authorizer)
     return search_client
 
+def get_authorized_confidentialapp_client(
+    app_client_id: UUID | str,
+):
+    confidential_client = ConfidentialAppAuthClient(
+        client_id = os.environ["GLOBUS_CLIENT_ID"],
+        client_secret = os.environ['GLOBUS_CLIENT_SECRET'],
+    )
+
+    scopes = "urn:globus:auth:scope:search.api.globus.org:all"
+    authorizer = ClientCredentialsAuthorizer(
+        confidential_client, scopes)
+
+
+    #authorizer=AccessTokenAuthorizer(access_token)
+
+    search_client = SearchClient(authorizer=authorizer)
+
+    return search_client
 # from Lucasz and Nate code with some minor changes
 def get_authorized_transfer_client(
     app_client_id: UUID | str, token_name: str = "token.json"  # noqa S107
@@ -160,7 +188,7 @@ class ClientModel(BaseModel):
     app_client_id: UUID
     token_name: str
     search_client: SearchClient | None
-    search_query: SearchQuery
+    search_query: SearchQueryV1
     indexes: dict[str, UUID]
 
     def list_index(self) -> dict[str, Any]:
@@ -186,7 +214,7 @@ class GlobusClient:
         "app_client_id": "fe862e63-f3bb-457a-9662-995832bb692f",
         "token_name": "test_index.json",
         "search_client": None,
-        "search_query": SearchQuery(""),
+        "search_query": SearchQueryV1(),
         "indexes": {
             "test_1": "52eff156-6141-4fde-9efe-c08c92f3a706",
             "test": "a2f1ac3a-bb7c-4be2-b3f5-cbd2b6a3e17b",
@@ -197,7 +225,7 @@ class GlobusClient:
         "app_client_id": "bb163ebc-7feb-490e-8296-e572a0622e3c",
         "token_name": "metadata_migration_sync_tokens.json",
         "search_client": None,
-        "search_query": SearchQuery(""),
+        "search_query": SearchQueryV1(),
         "indexes": {
             "public_old": "c0173b0c-5587-437a-a912-ef09b6d14e9c",
             "public": "a8ef4320-9e5a-4793-837b-c45161ca1845",
@@ -208,7 +236,7 @@ class GlobusClient:
         "app_client_id": "bb163ebc-7feb-490e-8296-e572a0622e3c",
         "token_name": "metadata_migration_sync_tokens.json",
         "search_client": None,
-        "search_query": SearchQuery(""),
+        "search_query": SearchQueryV1(),
         "indexes": {
             "backup": "a37bc34d-de15-493b-9221-b95b13114fd8",
             ProjectReadWrite.CMIP6PLUS.value: "1f385759-596e-4085-8d79-5b1dfedd1ca2",
@@ -282,6 +310,33 @@ class GlobusClient:
 
         return tc
 
+    @classmethod
+    def get_authorizor(cls, client_id, token_name) -> SearchClient:
+
+        logger = provenance.get_logger(__name__)
+
+        try:
+            if(
+                  "GLOBUS_CLIENT_ID" in os.environ and 
+                  "GLOBUS_CLIENT_SECRET" in os.environ
+              ):
+                authorized_search_client =  get_authorized_confidentialapp_client(
+                    client_id,
+                )
+
+                logger.info("Auth type: credential")
+            else:
+                authorized_search_client = get_authorized_search_client(
+                    client_id,
+                    token_name,
+                )
+                logger.info("Auth type: Native app")
+        except RuntimeError as e:
+            logger.error ("cannot find a valid authorizor")
+            raise RuntimeError
+        return authorized_search_client
+
+
 
     @classmethod
     def get_client(cls, name: str = "test") -> ClientModel:
@@ -301,7 +356,14 @@ class GlobusClient:
             if client_prod_all["search_client"] is None:
 
                 # migration app client
-                client_prod_all["search_client"] = get_authorized_search_client(
+                #client_prod_all["search_client"] = get_authorized_search_client(
+                #    client_prod_all["app_client_id"],
+                #    client_prod_all["token_name"],
+                #)
+                #client_prod_all["search_client"] = get_authorized_confidentialapp_client(
+                #    client_prod_all["app_client_id"],
+                #)
+                client_prod_all["search_client"] = cls.get_authorizor(
                     client_prod_all["app_client_id"],
                     client_prod_all["token_name"],
                 )
@@ -314,11 +376,18 @@ class GlobusClient:
             if cls.globus_clients[client_name].search_client is None:
                 logger.info(f"no search client and request for the client {client_name}")
 
-                cls.globus_clients[client_name].search_client = get_authorized_search_client(
+                #-cls.globus_clients[client_name].search_client = get_authorized_search_client(
+                #-    cls.globus_clients[client_name].app_client_id,
+                #-    cls.globus_clients[client_name].token_name,
+                #-)
+                #cls.globus_clients[client_name].search_client = get_authorized_confidentialapp_client(
+                #    cls.globus_clients[client_name].app_client_id,
+                #)
+
+                cls.globus_clients[client_name].search_client = cls.get_authorizor(
                     cls.globus_clients[client_name].app_client_id,
                     cls.globus_clients[client_name].token_name,
                 )
-
             logger.info(f"return the search client with the name {name}.")
 
             return cls.globus_clients[client_name]

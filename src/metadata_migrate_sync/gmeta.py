@@ -6,7 +6,11 @@ from typing import Any
 
 from metadata_migrate_sync.lite_model import enforced_field, enforced_field_relax, enforced_field_extend
 from pydantic import ValidationError
+from metadata_migrate_sync.provenance import provenance
 
+import logging
+
+logger = logging.getLogger()
 
 class GmetaGenerator(ABC):
     """Abstract base class for GMeta list generation."""
@@ -56,6 +60,8 @@ class GmetaGenerator(ABC):
                 enforced_field_extend.model_validate(entry, strict=True)
             return False
         except ValidationError as e:
+
+            logger.error(f"ValidationError:{e}")
             return True
 
 

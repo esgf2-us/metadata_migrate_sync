@@ -215,7 +215,7 @@ wheels = [
 
 [[package]]
 name = "globus-cli"
-version = "3.33.0"
+version = "3.41.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -225,14 +225,14 @@ dependencies = [
     { name = "requests" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/63/82/3c423871a00366d60a524f3998ae1a13953f89f6ca01b07e5d7ca6127d7d/globus_cli-3.33.0.tar.gz", hash = "sha256:001c935b85a1a03f66c51f1cfbcbe8a13715a24bdfb56e563399c0d7406cab96", size = 187445, upload-time = "2025-03-12T20:06:47.453Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/24/029fa94a16bac4df63dcc4051d2398f675642bc7ffb22bdeffadbf6cd4ec/globus_cli-3.41.0.tar.gz", hash = "sha256:62005d23f492a34bedc8db6387af7b63b62b38583e2e68a34ef62cf1f7b556cf", size = 209589, upload-time = "2026-01-15T16:59:41.988Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/c4/0f17e01bddf00aef328e1214148a2ea7704bda94cce1666e829a189b069a/globus_cli-3.33.0-py3-none-any.whl", hash = "sha256:68e7d2d6e73149b7ea8608ffdceb39f7a94b0217aaf9af84433c1b3831ab2b44", size = 302158, upload-time = "2025-03-12T20:06:45.736Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/a6/4fcd285c661c8713c844dbda8f43477cb2bece9ecd29a3eba03ce4163cde/globus_cli-3.41.0-py3-none-any.whl", hash = "sha256:62e2ffff8b17616a3c54940aaa7d419d1d63d85dfd193dd283fdd59d4c534532", size = 323609, upload-time = "2026-01-15T16:59:40.507Z" },
 ]
 
 [[package]]
 name = "globus-sdk"
-version = "3.51.0"
+version = "4.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -240,9 +240,9 @@ dependencies = [
     { name = "requests" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/e4/ee88b6652dbe0048c3cfbb5d2fb2b7b0d35406824b8b2f45a5e36d04884c/globus_sdk-3.51.0.tar.gz", hash = "sha256:e7b59cd4a4c64cb23d92009b0488ad7e975f8a9701b786b49b7043c6240a59a5", size = 263047, upload-time = "2025-03-06T20:53:38.242Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1d/c3/6fe04fc218be8d226aacaad51fdaa9cd63183c11548e054ca07bf64d9496/globus_sdk-4.3.0.tar.gz", hash = "sha256:bc815d7ee9b3e789b9c5f85cb6bafc9b01db777b638147af3c2f035226087b89", size = 268506, upload-time = "2025-12-17T22:56:33.743Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/e2/d20b0e5a27651abdf41c73e09bec7bd279445ed1576e37d16a00e0ab4cae/globus_sdk-3.51.0-py3-none-any.whl", hash = "sha256:316c277340c33f3f540e618c3d6fa40870018c81eb13b71231de22ceaaec960f", size = 397112, upload-time = "2025-03-06T20:53:35.029Z" },
+    { url = "https://files.pythonhosted.org/packages/28/f6/4e06f764b6484f238cd5ca9a9f00a463ba6dbd5efecb806560b5d8526749/globus_sdk-4.3.0-py3-none-any.whl", hash = "sha256:ac3fff3dae4d85b1ed5b65b71dd1bd82d8c2e25cd78701bcc55b747db09ac0b4", size = 413124, upload-time = "2025-12-17T22:56:32.045Z" },
 ]
 
 [[package]]
@@ -447,7 +447,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "globus-cli" },
-    { name = "globus-sdk", specifier = "~=3.51.0" },
+    { name = "globus-sdk", specifier = ">3.51.0" },
     { name = "ijson" },
     { name = "ntplib", specifier = ">=0.4.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
