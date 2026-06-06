@@ -8,7 +8,7 @@
 ### Basic information
 To start the ESGF 1.5 synchronizer and replicator cron jobs, users must:
 
-- be a member of the `cli137` project and have access to OpenDTN and the themis project shared folder (`/nl/themis/esgf/cli137/proj-shared`);
+- be a member of the `cli137-open` project and have access to OpenDTN and the themis project shared folder (`/nl/themis/esgf/cli137/proj-shared`);
 - possess a Globus client credential with read/write permission for the stage and public indexes. The credential should be stored in `$HOME/.ssh/env_client_secret.sh` with the following content:
   ```bash
   #!/usr/bin/env bash
@@ -27,6 +27,12 @@ After configuring the Globus client credentials, the remaining steps are:
 
 Run `crontab -l` before executing the above command to verify that no cron jobs are already scheduled on the node. Users can also determine which services are running on each node by inspecting the `host*.log` files in that directory.
 
+!!! info
+
+    If not all three OpenDTN front nodes are avaiable, either way as follow can be taken:
+        - just run sync on the available node `set_crontab_sync.sh`, and then run the replicators when all three nodes are avaviable
+        - run `set_crontab_combined.sh` on the available node. It combines all cron jobs in sync and replicators and runs all of them on one node
+
 !!! note
 
     Because the replicator transfers data from NERSC or ANL to ORNL using Globus, it requires Globus authorization for OpenDTN via the user's cli137 account, and this authorization expires after three days. Therefore, users must re‑authorize the Globus transfer session whenever data transfers are needed and the globus session is expired. Users typically receive emails with a subject such as "prod‑nersc‑ornl‑stage_{project}_nersc.gov_YYYY‑MM‑DD_00" and the following message body:
@@ -40,9 +46,8 @@ Run `crontab -l` before executing the above command to verify that no cron jobs 
    
       to re-authenticate with the required identities. 
     ```
-   
     
-    Just use the `cli137` credential to re-authenticate the globus session. The authentication will be expired in __72__ hours.
+    Just use the `cli137` credential to re-authenticate the globus session.
 
 ### Tests
 
