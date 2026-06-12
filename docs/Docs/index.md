@@ -29,8 +29,9 @@ Run `crontab -l` before executing the above command to verify that no cron jobs 
 
 !!! info
 
-    If not all three OpenDTN front nodes are avaiable, either way as follow can be taken:
-        - just run sync on the available node `set_crontab_sync.sh`, and then run the replicators when all three nodes are avaviable
+    If not all three OpenDTN front nodes are avaiable, either way as follows can be taken:
+
+        - just run sync on the available node `set_crontab_sync.sh`, and then run the two replicators when all three nodes are avaviable
         - run `set_crontab_combined.sh` on the available node. It combines all cron jobs in sync and replicators and runs all of them on one node
 
 !!! note
@@ -48,6 +49,16 @@ Run `crontab -l` before executing the above command to verify that no cron jobs 
     ```
     
     Just use the `cli137` credential to re-authenticate the globus session.
+
+!!! bug
+
+    Currently, I do not use umask in the script and python code, so, if you want to start the synchronizer service, please:
+
+       - change the permissions of the `cron_*.log` files under `/nl/themis/esgf/cli137/proj-shared/mfx/ESGF-1-5-Services/crontab/logs`.
+            ```
+               chmod 775 cron_*.log
+            ```
+       - change the permissions of the `replication*YYYY-MM-DD.*` in which `YYYY-MM-DD` is the current date if these files existed in `/nl/themis/esgf/cli137/proj-shared/mfx/ESGF-1-5-Services/crontab/logs/prod_sync`
 
 ### Tests
 
